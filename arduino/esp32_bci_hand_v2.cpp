@@ -11,30 +11,36 @@
  *   - Conexión: USB Serie COM3 @ 115200 baud
  *
  * PROTOCOLO DE ENTRADA:
- *   Formato: "clase_ded,conf_ded,clase_mun,conf_mun,timestamp\n"
+ *   Formato: "clase,conf_ded,clase_mun,conf_mun,timestamp\n"
  *   Ejemplo: "1,0.87,1,0.65,1.234\n"
  *
  *   Campos:
- *   - clase_ded: 0=dedos abiertos, 1=dedos cerrados
- *   - conf_ded: confianza 0-1 (ignorada en v2.0)
- *   - clase_mun: 0=muñeca posición inicial, 1=muñeca pronación
- *   - conf_mun: confianza 0-1 (ignorada en v2.0)
- *   - timestamp: tiempo en segundos (ignorado)
+ *   - clase:      0 = Mano IZQUIERDA, 1 = Mano DERECHA
+ *   - conf_ded:   confianza 0-1 (informativa, no limita el actuado)
+ *   - clase_mun:  campo heredado del protocolo v1; se conserva por
+ *                 compatibilidad pero la v2.0 decide con 'clase'
+ *   - conf_mun:   confianza 0-1 (informativa)
+ *   - timestamp:  tiempo en segundos (ignorado)
  *
- * MAPEO SERVO:
- *   DEDOS (MG995 - rango 0-180°) en GPIO 23:
- *   - clase_ded=0: PWM ~30 (0°, dedos ABIERTOS, resorte retrae)
- *   - clase_ded=1: PWM ~120 (180°, dedos CERRADOS, cierra puño)
+ * MAPEO CLASE -> SERVO (una clase comanda un servo; el otro a inicial):
  *
- *   MUÑECA (SG90 - rango 0-180°) en GPIO 17:
- *   - clase_mun=0: PWM ~90 (90°, posición INICIAL/NEUTRA)
- *   - clase_mun=1: PWM ~60 (60°, PRONACIÓN/giro izquierda)
+ *   clase 1 = MANO DERECHA
+ *     MG995 (GPIO 23): PWM 120 -> CIERRA el puño, todos los dedos a la vez
+ *     SG90  (GPIO 17): PWM 90  -> muñeca a posición inicial
+ *
+ *   clase 0 = MANO IZQUIERDA
+ *     MG995 (GPIO 23): PWM 30  -> dedos a posición inicial (los retrae el resorte)
+ *     SG90  (GPIO 17): PWM 60  -> PRONACIÓN de la muñeca
+ *
+ *   Nota sobre las etiquetas: el script de entrenamiento MODULO_BATCH asigna
+ *   Y=1 a la carpeta "lado derecho" y Y=0 a "lado izquierdo", de modo que
+ *   clase 1 SIEMPRE significa mano derecha. Ver MODULO_BATCH...m, linea 154.
  *
  * PARÁMETROS PWM:
  *   - Frecuencia: 50 Hz (estándar para servos)
  *   - Resolución: 10 bits (0-1023)
  *   - Rango útil MG995: 30-120
- *   - Rango útil SG90: 60-120
+ *   - Rango útil SG90: 60-90
  *
  * CONEXIÓN SERIAL:
  *   ESP32 RX (GPIO 3) ← USB → MATLAB TX
@@ -71,13 +77,17 @@
 #define PWM_FRECUENCIA 50      // Hz (servo standard)
 #define PWM_RESOLUCION 10      // bits (0-1023)
 
-// PWM values para MG995 (dedos - todos juntos)
-#define PWM_DEDOS_ABIERTOS  30   // ~0° (estado inicial, resorte abre)
-#define PWM_DEDOS_CERRADOS  120  // ~180° (cierra puño)
+// PWM del MG995 (dedos 1-5 simultáneos)
+#define PWM_DEDOS_ABIERTOS  30   // posición inicial; los retrae el resorte
+#define PWM_DEDOS_CERRADOS  120  // cierra el puño
 
-// PWM values para SG90 (muñeca)
-#define PWM_MUNECA_INICIAL  90   // ~90° (posición inicial/neutra)
-#define PWM_MUNECA_PRONACION 60  // ~60° (giro izquierda/pronación)
+// PWM del SG90 (muñeca)
+#define PWM_MUNECA_INICIAL  90   // posición inicial / neutra
+#define PWM_MUNECA_PRONACION 60  // pronación
+
+// Etiquetas de clase (ver MODULO_BATCH...m linea 154)
+#define CLASE_MANO_DERECHA    1   // Y=1 -> carpeta "lado derecho"
+#define CLASE_MANO_IZQUIERDA  0   // Y=0 -> carpeta "lado izquierdo"
 
 // ===== VARIABLES GLOBALES =====
 int contador_mensajes = 0;
@@ -145,20 +155,19 @@ void loop() {
       contador_mensajes++;
       tiempo_ultimo_mensaje = millis();
       
-      // ===== CONTROLAR DEDOS (MG995) =====
+      // ===== APLICAR LA CLASE RECIBIDA =====
+      // Cada clase comanda UN servo; el otro vuelve a su posicion inicial.
+      //   clase 1 = Mano DERECHA -> cierra el puno  (MG995 cierra, SG90 neutral)
+      //   clase 0 = Mano IZQUIERDA -> gira la muneca (SG90 pronacion, MG995 abierto)
       int pwm_dedos;
-      if (clase_ded == 1) {
-        pwm_dedos = PWM_DEDOS_CERRADOS;  // Cerrar puño
-      } else {
-        pwm_dedos = PWM_DEDOS_ABIERTOS;  // Abrir (resorte)
-      }
-      
-      // ===== CONTROLAR MUÑECA (SG90) =====
       int pwm_muneca;
-      if (clase_mun == 1) {
-        pwm_muneca = PWM_MUNECA_PRONACION;  // Pronación (giro izquierda)
+      
+      if (clase_ded == CLASE_MANO_DERECHA) {
+        pwm_dedos   = PWM_DEDOS_CERRADOS;    // Mano derecha: cerrar el puño
+        pwm_muneca  = PWM_MUNECA_INICIAL;     // La muñeca no participa
       } else {
-        pwm_muneca = PWM_MUNECA_INICIAL;    // Posición inicial
+        pwm_dedos   = PWM_DEDOS_ABIERTOS;     // Los dedos vuelven al inicio
+        pwm_muneca  = PWM_MUNECA_PRONACION;   // Mano izquierda: pronar la muñeca
       }
       
       // Aplicar PWM a los servos
@@ -169,30 +178,22 @@ void loop() {
       // Log de mensaje recibido
       Serial.print("[");
       Serial.print(contador_mensajes);
-      Serial.print("] Recibido: ded=");
+      Serial.print("] Recibido: clase=");
       Serial.print(clase_ded);
       Serial.print(" (");
       Serial.print(conf_ded, 2);
-      Serial.print("), mun=");
-      Serial.print(clase_mun);
-      Serial.print(" (");
-      Serial.print(conf_mun, 2);
-      Serial.print("), t=");
+      Serial.print(") t=");
       Serial.println(timestamp, 2);
       
-      // Log de acción tomada
-      Serial.print("  → Dedos: ");
-      if (clase_ded == 1) {
-        Serial.println("CERRADOS (PWM 120)");
+      // Log de la accion executada
+      if (clase_ded == CLASE_MANO_DERECHA) {
+        Serial.println("  Mano DERECHA");
+        Serial.println("  -> Dedos: CERRADOS (PWM 120)");
+        Serial.println("  -> Muneca: POSICION INICIAL (PWM 90)");
       } else {
-        Serial.println("ABIERTOS (PWM 30)");
-      }
-      
-      Serial.print("  → Muñeca: ");
-      if (clase_mun == 1) {
-        Serial.println("PRONACIÓN (PWM 60)");
-      } else {
-        Serial.println("POSICIÓN INICIAL (PWM 90)");
+        Serial.println("  Mano IZQUIERDA");
+        Serial.println("  -> Dedos: ABIERTOS (PWM 30, resorte)");
+        Serial.println("  -> Muneca: PRONACION (PWM 60)");
       }
       Serial.println("");
       

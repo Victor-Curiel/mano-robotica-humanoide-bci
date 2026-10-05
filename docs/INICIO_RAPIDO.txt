@@ -87,13 +87,15 @@ Fuente: 5V @ 2A mínimo
 MAPEO DE CONTROL (v2.0)
 ════════════════════════════════════════════════════════════════════════════════
 
-Predicción 0 (Mano Derecha):
-  → DEDOS: Abiertos (PWM 30, resorte retrae)
-  → MUÑECA: Posición inicial (PWM 90, neutra)
-
-Predicción 1 (Mano Izquierda):
+Predicción 1 (Mano DERECHA):
   → DEDOS: Cerrados (PWM 120, cierra puño)
-  → MUÑECA: Pronación (PWM 60, giro izquierda)
+  → MUÑECA: Posición inicial (PWM 90, no participa)
+
+Predicción 0 (Mano IZQUIERDA):
+  → DEDOS: Posición inicial (PWM 30, los retrae el resorte)
+  → MUÑECA: Pronación (PWM 60)
+
+Cada clase comanda un solo servo; el otro vuelve a su posición inicial.
 
 ════════════════════════════════════════════════════════════════════════════════
 TROUBLESHOOTING RÁPIDO

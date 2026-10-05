@@ -24,7 +24,7 @@
 %   ...
 %   Columna 1: timestamp inicio evento (seg)
 %   Columna 2: timestamp fin evento (seg)
-%   Columna 3: clase (0=Derecha, 1=Izquierda)
+%   Columna 3: clase (1=Derecha, 0=Izquierda) — ver MODULO_BATCH...m línea 154
 %
 % SALIDA:
 %   cm_ded: [2×2] - Matriz confusión DEDOS

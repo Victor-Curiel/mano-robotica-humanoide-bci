@@ -56,8 +56,12 @@ MAPEO DE MOVIMIENTOS
 ════════════════════════════════════════════════════════════════════════════════
 
 El sistema predice:
-  • Clase 0 (Mano Derecha) → Dedos ABIERTOS + Muñeca NEUTRA
-  • Clase 1 (Mano Izquierda) → Dedos CERRADOS + Muñeca PRONACIÓN
+  • Clase 1 (Mano Derecha)   → Dedos CERRADOS + Muñeca a posición inicial
+  • Clase 0 (Mano Izquierda) → Dedos a posición inicial + Muñeca PRONACIÓN
+
+  Cada clase comanda un solo servo; el otro vuelve a su posición inicial.
+  Las etiquetas vienen del script de entrenamiento (MODULO_BATCH...m línea 154):
+  Y=1 es "lado derecho", Y=0 es "lado izquierdo".
 
 ════════════════════════════════════════════════════════════════════════════════
 

@@ -13,11 +13,15 @@
 %   - 1× Servo MG995 (todos dedos simultáneos) en GPIO 23
 %   - 1× Servo SG90 (muñeca pronación) en GPIO 17
 %
-% MAPEO DE MOVIMIENTOS:
-%   Clase 0 (Derecha) → Dedos abiertos (MG995 PWM 30, resorte retrae)
-%   Clase 1 (Izquierda) → Dedos cerrados (MG995 PWM 120, cierra puño)
-%   Clase 0 (Derecha) → Muñeca inicial (SG90 PWM 90, posición neutra)
-%   Clase 1 (Izquierda) → Muñeca pronación (SG90 PWM 60, giro izquierda)
+% MAPEO DE MOVIMIENTOS (una clase comanda un servo; el otro va a inicial):
+%   Clase 1 = Mano DERECHA    → Dedos CERRADOS (MG995 PWM 120, cierra puño)
+%                               Muñeca a inicial  (SG90 PWM 90)
+%   Clase 0 = Mano IZQUIERDA  → Dedos a inicial  (MG995 PWM 30, resorte)
+%                               Muñeca PRONACIÓN  (SG90 PWM 60)
+%
+%   El etiquetado viene del script de entrenamiento, que asigna Y=1 a la
+%   carpeta "lado derecho" y Y=0 a "lado izquierdo"
+%   (MODULO_BATCH...m, línea 154). Por eso clase 1 = mano derecha.
 %
 % USO:
 %   >> control_final('C:\ruta\al\archivo.cdt')
@@ -425,7 +429,7 @@ hold on;
 plot(tiempos, confianzas, 's--', 'LineWidth', 1.5, 'MarkerSize', 4);
 xlabel('Tiempo (segundos)');
 ylabel('Clase / Confianza');
-title('Predicciones BCI - Mano Derecha (0) vs Mano Izquierda (1)');
+title('Predicciones BCI - Mano Derecha (1) vs Mano Izquierda (0)');
 legend('Predicción', 'Confianza', 'Location', 'best');
 grid on;
 ylim([-0.2, 1.2]);
@@ -439,7 +443,7 @@ xlabel('Clase');
 ylabel('Cantidad de Predicciones');
 title('Distribución de Predicciones');
 set(gca, 'XTick', [0 1]);
-set(gca, 'XTickLabel', {'Mano Derecha (0)', 'Mano Izquierda (1)'});
+set(gca, 'XTickLabel', {'Mano Izquierda (0)', 'Mano Derecha (1)'});
 grid on;
 
 fprintf('  ✓ Gráficos generados\n\n');
@@ -455,8 +459,8 @@ fprintf('═══════════════════════�
 fprintf('Archivo procesado: %s\n', archivo_entrada);
 fprintf('Duración total: %.2f segundos\n', (length(sig_C3)-1) / fs);
 fprintf('Total predicciones: %d\n', length(predicciones));
-fprintf('  - Mano Derecha (0): %d (%.1f%%)\n', n_clase_0, n_clase_0/length(predicciones)*100);
-fprintf('  - Mano Izquierda (1): %d (%.1f%%)\n', n_clase_1, n_clase_1/length(predicciones)*100);
+fprintf('  - Mano Izquierda (0): %d (%.1f%%)\n', n_clase_0, n_clase_0/length(predicciones)*100);
+fprintf('  - Mano Derecha (1): %d (%.1f%%)\n', n_clase_1, n_clase_1/length(predicciones)*100);
 fprintf('Confianza promedio: %.3f\n', mean(confianzas));
 fprintf('\n');
 

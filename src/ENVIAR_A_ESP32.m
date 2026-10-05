@@ -29,14 +29,16 @@
 %   - conf_muneca: confianza 0-1 (2 decimales)
 %   - timestamp: tiempo en segundos (3 decimales)
 %
-% MAPEO SERVO:
-%   DEDOS (5x MG995):
-%   - clase=0: PWM 30 (0°, dedos abiertos)
-%   - clase=1: PWM 120 (180°, dedos cerrados)
+% MAPEO SERVO (una clase comanda un servo; el otro va a su posición inicial):
+%   clase=1 (Mano DERECHA):
+%     MG995 (dedos) -> PWM 120, cierra el puño
+%     SG90  (muñeca) -> PWM 90,  posición inicial
 %
-%   MUÑECA (SG90):
-%   - clase=0: PWM 90 (posición neutra)
-%   - clase=1: PWM 60 (pronación/giro izquierda)
+%   clase=0 (Mano IZQUIERDA):
+%     MG995 (dedos) -> PWM 30,  posición inicial (resorte)
+%     SG90  (muñeca) -> PWM 60,  pronación
+%
+%   Etiquetas según MODULO_BATCH...m línea 154: Y=1 es "lado derecho".
 %
 % REFERENCIA TESIS:
 %   Objetivo Específico (main.tex:832-851):

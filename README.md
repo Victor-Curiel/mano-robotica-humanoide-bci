@@ -25,8 +25,8 @@ EEG (.cdt / .set)
    ├─► Normalización        Z-Score  (mu_norm, sigma_norm)
    │
    ├─► Clasificación        MLP 9 → 10 → 2   (patternnet)
-   │     clase 0 = Mano Derecha
-   │     clase 1 = Mano Izquierda
+   │     clase 1 = Mano Derecha    -> cierra el puño
+   │     clase 0 = Mano Izquierda  -> pronación de la muñeca
    │
    ├─► Predicción continua  ventana 2 s · traslape 50 % · decisión cada 1 s
    │
@@ -39,10 +39,17 @@ EEG (.cdt / .set)
 
 ## Mapeo de movimientos
 
-| Clase | Significado | MG995 (dedos) | SG90 (muñeca) |
-|:-----:|-------------|---------------|----------------|
-| `0`   | Mano Derecha | PWM 30 — abierto (resorte retrae) | PWM 90 — posición inicial |
-| `1`   | Mano Izquierda | PWM 120 — cerrado (puño) | PWM 60 — pronación |
+Cada clase comanda **un solo servo**; el otro vuelve a su posición inicial.
+
+| Clase | Significado | MG995 — dedos | SG90 — muñeca |
+|:-----:|-------------|---------------|---------------|
+| `1`   | **Mano Derecha** (imaginar cerrar la mano) | PWM 120 — **cierra el puño** | PWM 90 — posición inicial |
+| `0`   | **Mano Izquierda** (imaginar rotar la muñeca) | PWM 30 — posición inicial (resorte) | PWM 60 — **pronación** |
+
+La asignación de etiquetas no es una convención de este repo: el script de
+entrenamiento define `Y=1` para la carpeta `lado derecho` y `Y=0` para
+`lado izquierdo` (`src/MODULO_BATCH_EXTRACCION_WELCH_Y_BURG_50TRASLAPE_PLOT.m`,
+línea 154). Por eso **clase 1 siempre significa mano derecha**.
 
 ---
 

@@ -56,8 +56,8 @@ ARQUITECTURA DEL SISTEMA v2.0
 │     ↓                                                                        │
 │  9. ACTUACIÓN DE SERVOS                                                     │
 │     ↓                                                                        │
-│  Clase 0 (Derecha): Dedos abiertos + Muñeca neutra                         │
-│  Clase 1 (Izquierda): Dedos cerrados + Muñeca pronación                    │
+│  Clase 1 (Derecha):   Dedos cerrados + Muneca a inicial                         │
+│  Clase 0 (Izquierda): Dedos a inicial + Muneca pronacion                    │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -113,15 +113,18 @@ SALIDA:
   • Movimiento de servos (si ESP32 conectado)
   • Tiempo aproximado: 30-60 segundos (depende archivo)
 
-MAPEO DE MOVIMIENTOS:
-  
-  Clase 0 (Mano Derecha):
-    → DEDOS: Abiertos (PWM 30, resorte retrae)
-    → MUÑECA: Posición inicial/neutra (PWM 90)
-  
-  Clase 1 (Mano Izquierda):
-    → DEDOS: Cerrados (PWM 120, cierra puño)
-    → MUÑECA: Pronación (PWM 60, giro izquierda)
+MAPEO DE MOVIMIENTOS
+(una clase comanda un servo; el otro vuelve a su posición inicial):
+
+  Clase 1 (Mano DERECHA):
+    → DEDOS:  Cerrados (PWM 120, cierra el puño)
+    → MUÑECA: Posición inicial (PWM 90, no participa)
+
+  Clase 0 (Mano IZQUIERDA):
+    → DEDOS:  Posición inicial (PWM 30, los retrae el resorte)
+    → MUÑECA: Pronación (PWM 60)
+
+  Etiquetas según MODULO_BATCH...m línea 154: Y=1 → "lado derecho".
 
 ════════════════════════════════════════════════════════════════════════════════
 ARCHIVOS DEL PROYECTO

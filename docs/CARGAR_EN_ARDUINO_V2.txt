@@ -157,19 +157,21 @@ En Serial Monitor:
 
 4. Deberías ver:
    
-   [1] Recibido: ded=1 (0.87), mun=1 (0.65), t=1.23
-     → Dedos: CERRADOS (PWM 120)
-     → Muñeca: PRONACIÓN (PWM 60)
+   [1] Recibido: clase=1 (0.87) t=1.23
+     Mano DERECHA
+     -> Dedos: CERRADOS (PWM 120)
+     -> Muneca: POSICION INICIAL (PWM 90)
 
-5. Prueba con otro comando:
+5. Prueba con el otro comando:
    
    0,0.92,0,0.71,2.456
 
 6. Deberías ver:
    
-   [2] Recibido: ded=0 (0.92), mun=0 (0.71), t=2.46
-     → Dedos: ABIERTOS (PWM 30)
-     → Muñeca: POSICIÓN INICIAL (PWM 90)
+   [2] Recibido: clase=0 (0.92) t=2.46
+     Mano IZQUIERDA
+     -> Dedos: ABIERTOS (PWM 30, resorte)
+     -> Muneca: PRONACION (PWM 60)
 
 Si ves estos mensajes → ✓ ¡CÓDIGO FUNCIONA CORRECTAMENTE!
 
@@ -214,13 +216,16 @@ El script:
 MAPEO DE CONTROL
 ════════════════════════════════════════════════════════════════════════════════
 
-Predicción = 0 (Mano Derecha):
-  → Dedos: ABIERTOS (PWM 30, resorte retrae)
-  → Muñeca: POSICIÓN INICIAL (PWM 90, neutra)
+Predicción = 1 (Mano DERECHA):
+  → Dedos: CERRADOS (PWM 120, cierra el puño)
+  → Muñeca: POSICIÓN INICIAL (PWM 90, no participa)
 
-Predicción = 1 (Mano Izquierda):
-  → Dedos: CERRADOS (PWM 120, cierra puño)
-  → Muñeca: PRONACIÓN (PWM 60, giro izquierda)
+Predicción = 0 (Mano IZQUIERDA):
+  → Dedos: POSICIÓN INICIAL (PWM 30, los retrae el resorte)
+  → Muñeca: PRONACIÓN (PWM 60)
+
+Cada clase comanda un solo servo; el otro vuelve a su posición inicial.
+Etiquetas según MODULO_BATCH...m línea 154: Y=1 → "lado derecho".
 
 ════════════════════════════════════════════════════════════════════════════════
 TROUBLESHOOTING
