@@ -1,0 +1,70 @@
+# MATLAB
+*.asv
+*.mat.bak
+slprj/
+*.slxc
+sldebug*
+
+# Octave
+*.octave-workspace
+
+# Resultados de ejecucion (se regeneran, no se versionan)
+resultados/*
+!resultados/.gitkeep
+demo_resultados_*.mat
+*.log
+
+# Datos EEG de sujetos (privados / licensed)
+# Descomentar si NO deben subirse nunca:
+# data/
+# *.cdt
+# *.set
+# *.fdt
+# *.vhdr
+# *.eeg
+# *.vmrk
+# Exp_BCI_*.csv
+
+# Respuestas de questionnaires (sujetos identificables)
+respuestas*.xlsx
+
+# Arduino
+*.hex
+*.elf
+*.bin
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+!.vscode/settings.json
+
+# LaTeX (por si se anaden figuras o anexos)
+*.aux
+*.bbl
+*.blg
+*.lof
+*.lot
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+build/
+
+# Overleaf
+*.synctex
+*.run.xml

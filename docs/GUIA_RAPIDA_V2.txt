@@ -1,0 +1,164 @@
+════════════════════════════════════════════════════════════════════════════════
+                    GUÍA RÁPIDA - SISTEMA BCI v2.0
+                Máximo 5 minutos de lectura para empezar
+════════════════════════════════════════════════════════════════════════════════
+
+¿PRIMERA VEZ? Lee esto primero (2 minutos):
+════════════════════════════════════════════════════════════════════════════════
+
+HARDWARE:
+  • ESP32 conectado por USB
+  • 1 servo MG995 en GPIO 23 (dedos todos juntos)
+  • 1 servo SG90 en GPIO 17 (muñeca)
+  • Fuente 5V @ 2.5A
+
+SOFTWARE:
+  • MATLAB 2026a
+  • EEGLAB (instalado)
+  • Arduino IDE (para cargar código en ESP32)
+
+════════════════════════════════════════════════════════════════════════════════
+
+PASO 1: CARGAR CÓDIGO EN ESP32 (Primera vez - 10 minutos)
+════════════════════════════════════════════════════════════════════════════════
+
+Si NUNCA has cargado código en ESP32:
+
+1. Lee CARGAR_EN_ARDUINO_V2.txt (5 minutos)
+2. Sigue los pasos exactamente (5 minutos)
+3. Verifica en Serial Monitor: "Sistema listo..."
+
+Si YA lo hiciste: Omite este paso.
+
+════════════════════════════════════════════════════════════════════════════════
+
+PASO 2: USAR EL SISTEMA (Cada vez - 1 minuto)
+════════════════════════════════════════════════════════════════════════════════
+
+En MATLAB, ejecuta:
+
+    >> control_final('C:\ruta\a\tu\archivo.cdt')
+
+O si tienes .set:
+
+    >> control_final('C:\ruta\a\tu\archivo.set')
+
+Espera a que termine (30-60 segundos):
+  • Procesa EEG
+  • Entrena/carga modelo
+  • Hace predicciones
+  • Mueve servos
+  • Muestra gráficos
+
+════════════════════════════════════════════════════════════════════════════════
+
+MAPEO DE MOVIMIENTOS
+════════════════════════════════════════════════════════════════════════════════
+
+El sistema predice:
+  • Clase 0 (Mano Derecha) → Dedos ABIERTOS + Muñeca NEUTRA
+  • Clase 1 (Mano Izquierda) → Dedos CERRADOS + Muñeca PRONACIÓN
+
+════════════════════════════════════════════════════════════════════════════════
+
+ARCHIVOS IMPORTANTES
+════════════════════════════════════════════════════════════════════════════════
+
+PARA EMPEZAR:
+  • control_final.m ← EL SCRIPT QUE EJECUTARÁS
+  • esp32_bci_hand_v2.cpp ← Código para ESP32
+  • CARGAR_EN_ARDUINO_V2.txt ← Instrucciones Arduino
+
+DOCUMENTACIÓN:
+  • RESUMEN_SISTEMA_V2.txt ← Explicación completa
+  • GUIA_RAPIDA_V2.txt ← Este archivo
+  • INICIO_RAPIDO.txt ← Referencia rápida
+
+UTILIDADES (si necesitas ajustes):
+  • DEMO_FLEXIBLE.m ← Demo interactivo
+  • TEST_ESP32_SIMULADO.m ← Testing sin hardware
+
+════════════════════════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING RÁPIDO
+════════════════════════════════════════════════════════════════════════════════
+
+❌ "Error: Puerto COM3 no se abre"
+   → ¿ESP32 conectado?
+   → Device Manager → Busca "USB Serial"
+   → Instala driver: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
+
+❌ "Error: Modelo no encontrado"
+   → Ejecuta MODULO_BATCH_EXTRACCION_WELCH_Y_BURG_50TRASLAPE_PLOT.m
+   → Esto genera Modelo_BCI_Completo_Wav.mat
+
+❌ "Servos no se mueven pero código sube OK"
+   → ¿5V en pin VIN del ESP32?
+   → ¿Servos conectados a GPIO 23 y 17?
+   → ¿Conector de masa común?
+   → Prueba en Serial Monitor: 1,0.5,1,0.5,1
+
+════════════════════════════════════════════════════════════════════════════════
+
+EJEMPLO COMPLETO (Copiar y pegar)
+════════════════════════════════════════════════════════════════════════════════
+
+En MATLAB:
+
+    % 1. Procesar archivo
+    >> control_final('C:\Users\vhca1\Desktop\Acquisition\Sin_clasificar\arzaluzImagina280926-1\Acquisition 15.cdt')
+    
+    % 2. Esperar a que termine (verás gráficos y mensajes)
+    
+    % 3. Los servos se moverán automáticamente según predicciones
+
+════════════════════════════════════════════════════════════════════════════════
+
+PARÁMETROS CLAVE (Si necesitas modificar)
+════════════════════════════════════════════════════════════════════════════════
+
+En control_final.m, busca:
+
+  duracion_ventana = 2;  % segundos
+  paso_prediccion = 1;   % segundos
+
+En esp32_bci_hand_v2.cpp, busca:
+
+  #define PWM_DEDOS_ABIERTOS 30
+  #define PWM_DEDOS_CERRADOS 120
+  #define PWM_MUNECA_INICIAL 90
+  #define PWM_MUNECA_PRONACION 60
+
+════════════════════════════════════════════════════════════════════════════════
+
+VALIDAR QUE TODO FUNCIONA
+════════════════════════════════════════════════════════════════════════════════
+
+1. En Arduino IDE → Serial Monitor (115200 baud)
+   Envía: 1,0.5,1,0.5,1
+   Debe responder: [1] Recibido: ded=1...
+
+2. Verifica que los servos se mueven
+
+3. Ejecuta control_final.m con un archivo de prueba
+
+4. Si ves gráficos y movimiento de servos → ✓ FUNCIONA
+
+════════════════════════════════════════════════════════════════════════════════
+
+CONTACTO Y AYUDA
+════════════════════════════════════════════════════════════════════════════════
+
+Para más detalles:
+  • RESUMEN_SISTEMA_V2.txt
+  • CARGAR_EN_ARDUINO_V2.txt
+  • Comentarios en control_final.m
+  • Comentarios en esp32_bci_hand_v2.cpp
+
+════════════════════════════════════════════════════════════════════════════════
+
+¡LISTO! Ya puedes empezar. Ejecuta:
+
+    >> control_final('archivo.cdt')
+
+════════════════════════════════════════════════════════════════════════════════

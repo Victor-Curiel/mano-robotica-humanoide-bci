@@ -1,0 +1,2 @@
+# Esta carpeta guarda las salidas de ejecucion (demo_resultados_*.mat, graficos).
+# Se regeneran al ejecutar control_final.m, por lo que git las ignora.

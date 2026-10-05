@@ -1,0 +1,253 @@
+════════════════════════════════════════════════════════════════════════════════
+        INSTRUCCIONES PARA CARGAR CÓDIGO ESP32 v2.0 EN ARDUINO IDE
+             (1× MG995 DEDOS + 1× SG90 MUÑECA)
+════════════════════════════════════════════════════════════════════════════════
+
+CAMBIOS EN v2.0:
+  • 1 servo MG995 para TODOS los dedos (cerrar/abrir simultáneamente)
+  • 1 servo SG90 para MUÑECA (pronación/supinación)
+  • Total: 2 servos (era 6 servos en v1.0)
+  • Código simplificado y optimizado
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 1: PREPARACIÓN (SI NO LO HICISTE EN v1.0)
+════════════════════════════════════════════════════════════════════════════════
+
+1. Descarga Arduino IDE:
+   https://www.arduino.cc/en/software
+
+2. Instala Arduino IDE
+
+3. Abre Arduino IDE
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 2: AGREGAR SOPORTE ESP32 (SI NO LO HICISTE EN v1.0)
+════════════════════════════════════════════════════════════════════════════════
+
+1. File → Preferences
+
+2. Busca "Additional boards manager URLs"
+
+3. Haz click en el ícono (a la derecha del campo)
+
+4. Copia y pega esta URL:
+   
+   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+
+5. Click OK
+
+6. Tools → Board Manager
+
+7. Busca "esp32"
+
+8. Selecciona "ESP32" de "Espressif Systems"
+
+9. Click "Install" (espera a completar)
+
+10. Close Board Manager
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 3: COPIAR CÓDIGO NUEVO
+════════════════════════════════════════════════════════════════════════════════
+
+1. Abre archivo: esp32_bci_hand_v2.cpp
+   
+   Ubicación: C:\Users\vhca1\OneDrive\Documentos\UPIITA\10mo Semestre\TT2\TT1\
+   Trabajo Terminal\Programa Pruebas\esp32_bci_hand_v2.cpp
+
+2. Selecciona TODO el código (Ctrl+A)
+
+3. Copia (Ctrl+C)
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 4: CREAR SKETCH EN ARDUINO IDE
+════════════════════════════════════════════════════════════════════════════════
+
+1. En Arduino IDE:
+   File → New
+
+2. Se abre un sketch en blanco
+
+3. BORRA todo contenido (Ctrl+A, Delete)
+
+4. PEGA el código (Ctrl+V)
+
+5. Verifica que el código se vea completo:
+   - Debe empezar con /*
+   - Debe terminar con la sección de comentarios MAPEO DE PINES
+
+6. File → Save
+
+7. Dale nombre: esp32_bci_hand_v2
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 5: SELECCIONAR BOARD Y PUERTO
+════════════════════════════════════════════════════════════════════════════════
+
+IMPORTANTE: Conecta ESP32 por USB ANTES de este paso
+
+1. En Arduino IDE:
+   Tools → Board → Espressif Systems ESP32 → ESP32-WROOM-32
+
+2. Tools → Port → COM3
+
+   (O el puerto que uses - verifica en Device Manager)
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 6: COMPILAR Y SUBIR
+════════════════════════════════════════════════════════════════════════════════
+
+1. Sketch → Verify (Ctrl+R)
+   
+   Espera a que diga "Compilation complete"
+
+2. Sketch → Upload (Ctrl+U)
+
+3. Espera a ver:
+   
+   "Leaving... Hard resetting via RTS pin..."
+   
+   Esto significa: ✓ Upload EXITOSO
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 7: VERIFICAR FUNCIONAMIENTO
+════════════════════════════════════════════════════════════════════════════════
+
+1. En Arduino IDE:
+   Tools → Serial Monitor
+
+2. Abajo a la derecha: 
+   Cambiar a "115200 baud"
+
+3. Deberías ver:
+
+   ════════════════════════════════════════════════════════════════════════════
+   ESP32 BCI - Mano Robótica v2.0
+   ════════════════════════════════════════════════════════════════════════════
+   
+   Hardware:
+     • 1× Servo MG995 (dedos 1-5 simultáneos) en GPIO 23
+     • 1× Servo SG90 (muñeca pronación) en GPIO 17
+   
+   PWM configurado:
+     • Frecuencia: 50 Hz
+     • Resolución: 10 bits (0-1023)
+     • Canal: 0 (ambos pines)
+   
+   Estado inicial:
+     • Dedos: ABIERTOS (PWM 30)
+     • Muñeca: NEUTRA (PWM 90)
+   
+   Sistema listo. Esperando datos de MATLAB...
+   ════════════════════════════════════════════════════════════════════════════
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 8: TESTING CON DATOS SIMULADOS
+════════════════════════════════════════════════════════════════════════════════
+
+En Serial Monitor:
+
+1. Click en el campo de entrada (arriba)
+
+2. Escribe:
+   
+   1,0.87,1,0.65,1.234
+
+3. Press Enter
+
+4. Deberías ver:
+   
+   [1] Recibido: ded=1 (0.87), mun=1 (0.65), t=1.23
+     → Dedos: CERRADOS (PWM 120)
+     → Muñeca: PRONACIÓN (PWM 60)
+
+5. Prueba con otro comando:
+   
+   0,0.92,0,0.71,2.456
+
+6. Deberías ver:
+   
+   [2] Recibido: ded=0 (0.92), mun=0 (0.71), t=2.46
+     → Dedos: ABIERTOS (PWM 30)
+     → Muñeca: POSICIÓN INICIAL (PWM 90)
+
+Si ves estos mensajes → ✓ ¡CÓDIGO FUNCIONA CORRECTAMENTE!
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 9: CONEXIÓN DE HARDWARE
+════════════════════════════════════════════════════════════════════════════════
+
+DEDOS (MG995) en GPIO 23:
+  Rojo (5V)     → Pin VIN del ESP32
+  Negro (GND)   → Pin GND del ESP32
+  Amarillo (Señal) → GPIO 23
+
+MUÑECA (SG90) en GPIO 17:
+  Rojo (5V)     → Pin VIN del ESP32
+  Negro (GND)   → Pin GND del ESP32
+  Amarillo (Señal) → GPIO 17
+
+FUENTE DE ALIMENTACIÓN:
+  5V @ 2A mínimo
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 10: USAR CON MATLAB
+════════════════════════════════════════════════════════════════════════════════
+
+En MATLAB, ejecuta el script maestro:
+
+    >> control_final('C:\ruta\al\archivo.cdt')
+    
+    o
+    
+    >> control_final('C:\ruta\al\archivo.set')
+
+El script:
+  1. Procesará el archivo
+  2. Extraerá características
+  3. Entrenará/cargará el modelo
+  4. Hará predicciones
+  5. Enviará comandos a COM3
+  6. Los servos se moverán automáticamente
+
+════════════════════════════════════════════════════════════════════════════════
+MAPEO DE CONTROL
+════════════════════════════════════════════════════════════════════════════════
+
+Predicción = 0 (Mano Derecha):
+  → Dedos: ABIERTOS (PWM 30, resorte retrae)
+  → Muñeca: POSICIÓN INICIAL (PWM 90, neutra)
+
+Predicción = 1 (Mano Izquierda):
+  → Dedos: CERRADOS (PWM 120, cierra puño)
+  → Muñeca: PRONACIÓN (PWM 60, giro izquierda)
+
+════════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════════
+
+❌ "COM3 no aparece"
+   → ¿ESP32 está conectado por USB?
+   → Device Manager → Puertos → Busca "USB Serial"
+   → Instala driver si es necesario:
+     https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
+
+❌ "Error de compilación"
+   → Verifica que copiaste TODO el código
+   → Busca la línea que falta y cópiala
+   → Vuelve a intentar Upload
+
+❌ "Serial Monitor muestra caracteres raros"
+   → Verifica baudrate: debe ser 115200
+   → Presiona botón RESET en ESP32
+   → Cierra y abre Serial Monitor
+
+❌ "Servos no se mueven"
+   → ¿Datos llegan a Serial Monitor?
+   → ¿5V en el pin VIN del ESP32?
+   → ¿Servos conectados correctamente?
+   → Prueba movimiento manual con Serial Monitor
+
+════════════════════════════════════════════════════════════════════════════════
+¡LISTO! Sistema ESP32 v2.0 completamente configurado
+════════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,306 @@
+════════════════════════════════════════════════════════════════════════════════
+                    SISTEMA BCI v2.0 - RESUMEN FINAL
+              (1× MG995 DEDOS + 1× SG90 MUÑECA - Sistema Completo)
+════════════════════════════════════════════════════════════════════════════════
+
+OBJETIVO DEL PROYECTO:
+  Implementar un sistema BCI offline que clasifique imagenes motoras de manos
+  (izquierda vs derecha) y controle una mano robótica humanoide de 6 DOF.
+
+════════════════════════════════════════════════════════════════════════════════
+ARQUITECTURA DEL SISTEMA v2.0
+════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PIPELINE COMPLETO                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  1. INPUT                                                                    │
+│     ↓                                                                        │
+│  Archivo EEG: .cdt (Neuroscan) o .set (EEGLAB)                             │
+│     ↓                                                                        │
+│  2. CONVERSIÓN (si .cdt)                                                    │
+│     ↓                                                                        │
+│  CONVERTIR_CDT_A_SET.m → archivo_crudo.set                                 │
+│     ↓                                                                        │
+│  3. CARGA DE DATOS                                                          │
+│     ↓                                                                        │
+│  Cargar en EEGLAB, validar canales C3, C4, Cz                              │
+│     ↓                                                                        │
+│  4. EXTRACCIÓN DE CARACTERÍSTICAS                                           │
+│     ↓                                                                        │
+│  Welch PSD (3 canales, banda 13-30 Hz Beta)                                │
+│  Burg PSD (3 canales, banda 13-30 Hz Beta)                                 │
+│  Wavelets D4 (3 canales, nivel 4 Daubechies-4)                             │
+│  → Vector de 9 características                                              │
+│     ↓                                                                        │
+│  5. NORMALIZACIÓN (Z-Score)                                                │
+│     ↓                                                                        │
+│  Media y desviación estándar guardadas (mu_norm, sigma_norm)               │
+│     ↓                                                                        │
+│  6. MODELO DE RED NEURONAL                                                  │
+│     ↓                                                                        │
+│  MLP 9→10→2 (entrada 9 características, 10 neuronas ocultas, 2 salidas)   │
+│  Entrenado en Modelo_BCI_Completo_Wav.mat                                  │
+│  Clases: 0 (Mano Derecha) / 1 (Mano Izquierda)                             │
+│     ↓                                                                        │
+│  7. PREDICCIÓN CONTINUA                                                     │
+│     ↓                                                                        │
+│  Ventanas de 2 segundos, traslape 50%, predicción cada 1 segundo           │
+│  Salida: clase (0 o 1) + confianza                                         │
+│     ↓                                                                        │
+│  8. CONTROL DE HARDWARE                                                     │
+│     ↓                                                                        │
+│  Enviar a ESP32 vía puerto COM3 @ 115200 baud                              │
+│  Protocolo: "clase,conf,clase,conf,timestamp\n"                            │
+│     ↓                                                                        │
+│  9. ACTUACIÓN DE SERVOS                                                     │
+│     ↓                                                                        │
+│  Clase 0 (Derecha): Dedos abiertos + Muñeca neutra                         │
+│  Clase 1 (Izquierda): Dedos cerrados + Muñeca pronación                    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+HARDWARE (v2.0 - SIMPLIFICADO)
+════════════════════════════════════════════════════════════════════════════════
+
+MICROCONTROLADOR:
+  • ESP32-WROOM-32
+  • Interfaz USB: COM3 @ 115200 baud
+  • 2 canales PWM @ 50 Hz, 10-bit resolution
+
+ACTUADORES:
+  • 1× Servo MG995 (dedos 1-5 simultáneamente)
+    - GPIO 23
+    - Rango: PWM 30 (abierto) ↔ PWM 120 (cerrado)
+    - Torque: 55 kg/cm
+    - Alimentación: 5V @ 2A
+
+  • 1× Servo SG90 (muñeca pronación/supinación)
+    - GPIO 17
+    - Rango: PWM 90 (neutro) ↔ PWM 60 (pronación)
+    - Torque: 1.5 kg/cm
+    - Alimentación: 5V @ 0.5A
+
+FUENTE DE ALIMENTACIÓN:
+  • 5V @ 2.5A mínimo (para ambos servos)
+
+════════════════════════════════════════════════════════════════════════════════
+SOFTWARE PRINCIPAL: control_final.m
+════════════════════════════════════════════════════════════════════════════════
+
+FUNCIÓN:
+  control_final(archivo_entrada)
+  
+PARÁMETROS:
+  archivo_entrada: ruta a .cdt o .set
+                   Ejemplo: 'C:\Desktop\Acquisition\Acquisition 15.cdt'
+
+FLUJO AUTOMÁTICO:
+  1. Valida archivo (conversión .cdt → .set si necesario)
+  2. Carga EEGLAB y datos
+  3. Extrae características (Welch + Burg + Wavelets)
+  4. Normaliza datos
+  5. Carga modelo entrenado (Modelo_BCI_Completo_Wav.mat)
+  6. Hace predicciones continuas (ventanas 2 seg, traslape 50%)
+  7. Abre puerto COM3 y envía predicciones a ESP32
+  8. Genera gráficos de resultados
+
+SALIDA:
+  • Gráficos con predicciones en tiempo real
+  • Log detallado en consola
+  • Movimiento de servos (si ESP32 conectado)
+  • Tiempo aproximado: 30-60 segundos (depende archivo)
+
+MAPEO DE MOVIMIENTOS:
+  
+  Clase 0 (Mano Derecha):
+    → DEDOS: Abiertos (PWM 30, resorte retrae)
+    → MUÑECA: Posición inicial/neutra (PWM 90)
+  
+  Clase 1 (Mano Izquierda):
+    → DEDOS: Cerrados (PWM 120, cierra puño)
+    → MUÑECA: Pronación (PWM 60, giro izquierda)
+
+════════════════════════════════════════════════════════════════════════════════
+ARCHIVOS DEL PROYECTO
+════════════════════════════════════════════════════════════════════════════════
+
+SCRIPT MAESTRO:
+  ✓ control_final.m (25 KB)
+    - TODO integrado en un archivo
+    - Procesa .cdt o .set
+    - Extrae características
+    - Entrena/carga modelo
+    - Hace predicciones
+    - Controla servos vía ESP32
+    → USO: >> control_final('archivo.cdt')
+
+UTILIDADES SECUNDARIAS:
+  • DEMO_FLEXIBLE.m (11 KB)
+    - Demo interactivo con cambio de rutas
+  
+  • TEST_ESP32_SIMULADO.m (8 KB)
+    - Testing sin hardware real
+  
+  • PREDICTOR_DATOS_CRUDOS.m (10 KB)
+    - Función predicción DEDOS (reutilizable)
+  
+  • PREDICTOR_MUNECA.m (7 KB)
+    - Función predicción MUÑECA (reutilizable)
+  
+  • CONVERTIR_CDT_A_SET.m (4 KB)
+    - Conversión Neuroscan → EEGLAB
+  
+  • VALIDADOR_CON_LABELS.m (10 KB)
+    - Validación contra ground truth
+  
+  • ENVIAR_A_ESP32.m (7 KB)
+    - Envío de datos a puerto serial
+
+CÓDIGO ARDUINO:
+  ✓ esp32_bci_hand_v2.cpp (10 KB)
+    - Código para ESP32
+    - Controla 2 servos (MG995 + SG90)
+    - Recibe comandos vía serial
+    - Aplica PWM según predicciones
+
+DOCUMENTACIÓN:
+  ✓ CARGAR_EN_ARDUINO_V2.txt (8 KB)
+    - Instrucciones paso a paso
+    - Instalación Arduino IDE
+    - Cargar código en ESP32
+    - Conexión de hardware
+    - Troubleshooting
+  
+  ✓ INICIO_RAPIDO.txt (4 KB)
+    - Referencia rápida
+    - Flujo típico
+    - Mapeo de control
+  
+  ✓ RESUMEN_SISTEMA_V2.txt (este archivo)
+    - Visión completa del sistema
+
+MODELO ENTRENADO:
+  • Modelo_BCI_Completo_Wav.mat (contiene):
+    - red_bionica: Red neuronal MLP 9→10→2
+    - mu_norm, sigma_norm: Estadísticas normalización
+    - Otros parámetros DSP
+
+PROCESAMIENTO:
+  • MODULO_BATCH_EXTRACCION_WELCH_Y_BURG_50TRASLAPE_PLOT.m
+    - Script original de entrenamiento
+    - Para futuras reentrenables
+
+════════════════════════════════════════════════════════════════════════════════
+FLUJO TÍPICO DE USO
+════════════════════════════════════════════════════════════════════════════════
+
+SETUP INICIAL (Primera vez - 15 minutos):
+  1. Instalar Arduino IDE (si no lo tienes)
+     https://www.arduino.cc/en/software
+  
+  2. Agregar soporte ESP32 en Arduino IDE
+     (Ver CARGAR_EN_ARDUINO_V2.txt para detalles)
+  
+  3. Cargar código esp32_bci_hand_v2.cpp en ESP32
+     • Copiar código completo de esp32_bci_hand_v2.cpp
+     • Crear nuevo sketch en Arduino IDE
+     • Pegar código
+     • Seleccionar board: ESP32-WROOM-32
+     • Seleccionar puerto: COM3
+     • Sketch → Upload
+  
+  4. Conectar hardware
+     • GPIO 23 → MG995 (dedos)
+     • GPIO 17 → SG90 (muñeca)
+     • 5V @ 2.5A
+
+CADA VEZ QUE ANALICES (2 minutos):
+  1. Conectar ESP32 por USB (si deseas hardware)
+  
+  2. En MATLAB:
+     >> control_final('C:\ruta\a\archivo.cdt')
+  
+  3. Esperar a que se complete:
+     - Procesa señal
+     - Entrena/carga modelo
+     - Hace predicciones
+     - Envía a ESP32
+     - Genera gráficos
+
+════════════════════════════════════════════════════════════════════════════════
+PARÁMETROS IMPORTANTES
+════════════════════════════════════════════════════════════════════════════════
+
+PROCESAMIENTO DE SEÑAL:
+  • Canales: C3, C4, Cz
+  • Banda de interés: 13-30 Hz (Beta)
+  • Métodos: Welch PSD, Burg PSD, Wavelets D4
+  • Características: 9 dimensionales (3 métodos × 3 canales)
+
+RED NEURONAL:
+  • Arquitectura: MLP 9→10→2
+  • Función activación: Sigmoid (oculta), Softmax (salida)
+  • Entrenamiento: 70% training, 15% validation, 15% test
+  • Época: ~200 iteraciones
+
+PREDICCIÓN EN TIEMPO REAL:
+  • Ventana: 2 segundos
+  • Traslape: 50% (1 segundo de paso)
+  • Predicción cada: 1 segundo
+  • Latencia: ~100-200 ms
+
+PROTOCOLO SERIAL:
+  • Puerto: COM3
+  • Baudrate: 115200
+  • Formato: "clase_ded,conf_ded,clase_mun,conf_mun,timestamp\n"
+  • Ejemplo: "1,0.87,1,0.65,1.234\n"
+
+════════════════════════════════════════════════════════════════════════════════
+REFERENCIAS A LA TESIS
+════════════════════════════════════════════════════════════════════════════════
+
+HIPÓTESIS (main.tex 664-669):
+  "El clasificador de patrones neurales mejorará la exactitud de la 
+  clasificación de imaginería motora bidireccional"
+  → Validado en VALIDADOR_CON_LABELS.m
+
+OBJETIVO GENERAL (main.tex 814-816):
+  "Implementar un ICO offline para el control de 4 movimientos de la mano"
+  → Implementado en control_final.m + hardware
+
+OBJETIVO ESPECÍFICO #9 (main.tex 841):
+  "Definir un sistema de control para los dedos 1-5 simultáneamente"
+  → Implementado: MG995 en GPIO 23
+
+OBJETIVO ESPECÍFICO #10 (main.tex 849):
+  "Definir un sistema de control para la muñeca"
+  → Implementado: SG90 en GPIO 17
+
+════════════════════════════════════════════════════════════════════════════════
+PRÓXIMAS MEJORAS (v2.1+)
+════════════════════════════════════════════════════════════════════════════════
+
+• Red neuronal independiente para muñeca
+• Procesamiento en tiempo real (online)
+• Interfaz gráfica de usuario
+• Validación con múltiples sujetos
+• Análisis de errores y artefactos
+
+════════════════════════════════════════════════════════════════════════════════
+SOPORTE Y TROUBLESHOOTING
+════════════════════════════════════════════════════════════════════════════════
+
+Para problemas durante la instalación o uso:
+  1. Consulta CARGAR_EN_ARDUINO_V2.txt (sección TROUBLESHOOTING)
+  2. Consulta INICIO_RAPIDO.txt (sección TROUBLESHOOTING)
+  3. Revisa comentarios en control_final.m
+  4. Verifica conexiones de hardware
+
+════════════════════════════════════════════════════════════════════════════════
+AUTOR: OpenCode BCI System
+FECHA: 2026-10-05
+VERSIÓN: 2.0
+════════════════════════════════════════════════════════════════════════════════

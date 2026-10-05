@@ -1,0 +1,153 @@
+════════════════════════════════════════════════════════════════════════════════
+             SISTEMA BCI v2.0 - REFERENCIA RÁPIDA DE EJECUCIÓN
+        (1× MG995 DEDOS + 1× SG90 MUÑECA - Sistema Integrado)
+════════════════════════════════════════════════════════════════════════════════
+
+NOTA: Para detalles completos, consulta tu tesis en Overleaf.
+Este archivo es solo REFERENCIA RÁPIDA para ejecutar el sistema.
+
+SCRIPT MAESTRO: control_final.m
+  → Ejecuta automáticamente TODO el pipeline BCI
+  → Procesa .cdt o .set
+  → Entrena/carga modelo
+  → Hace predicciones
+  → Controla servos vía ESP32
+
+════════════════════════════════════════════════════════════════════════════════
+REQUISITOS
+════════════════════════════════════════════════════════════════════════════════
+
+✓ MATLAB 2026a (instalado)
+✓ EEGLAB (ya funciona en tu sistema)
+✓ Modelo entrenado: Modelo_BCI_Completo_Wav.mat (archivo existente)
+✓ Dato de prueba: Acquisition 15.cdt en ruta correcta
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 1: EJECUTAR SCRIPT MAESTRO (control_final.m)
+════════════════════════════════════════════════════════════════════════════════
+
+En MATLAB Command Window:
+
+    >> control_final('C:\ruta\a\tu\archivo.cdt')
+    
+    o
+    
+    >> control_final('C:\ruta\a\tu\archivo.set')
+
+QUÉ HACE:
+  1. Valida archivo (conversión .cdt → .set si necesario)
+  2. Extrae características (Welch + Burg + Wavelets)
+  3. Normaliza datos
+  4. Carga/entrena modelo neuronal
+  5. Hace predicciones continuas (ventanas 2 seg, traslape 50%)
+  6. Envía comandos a ESP32 @ COM3
+  7. Genera gráficos de resultados
+
+SALIDA:
+  • Gráficos con predicciones en tiempo real
+  • Log en consola con detalles
+  • Movimiento de servos (si ESP32 conectado)
+
+TIEMPO TOTAL: ~30-60 segundos (depende del archivo)
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 2: CARGAR CÓDIGO EN ESP32 (Primera vez)
+════════════════════════════════════════════════════════════════════════════════
+
+Ver: CARGAR_EN_ARDUINO_V2.txt (instrucciones COMPLETAS)
+
+Resumen rápido:
+  1. Arduino IDE → Board Manager → Instala "ESP32"
+  2. Abre archivo: esp32_bci_hand_v2.cpp
+  3. Copia TODO el código (Ctrl+A, Ctrl+C)
+  4. Arduino IDE → New → Pega (Ctrl+V)
+  5. Tools → Board: ESP32-WROOM-32
+  6. Tools → Port: COM3
+  7. Sketch → Upload
+  8. Tools → Serial Monitor (115200 baud)
+  9. Verifica: "Sistema listo. Esperando datos de MATLAB..."
+
+════════════════════════════════════════════════════════════════════════════════
+PASO 3: CONECTAR HARDWARE
+════════════════════════════════════════════════════════════════════════════════
+
+DEDOS (MG995) en GPIO 23:
+  Rojo (5V) → VIN
+  Negro (GND) → GND
+  Amarillo (Señal) → GPIO 23
+
+MUÑECA (SG90) en GPIO 17:
+  Rojo (5V) → VIN
+  Negro (GND) → GND
+  Amarillo (Señal) → GPIO 17
+
+Fuente: 5V @ 2A mínimo
+
+════════════════════════════════════════════════════════════════════════════════
+MAPEO DE CONTROL (v2.0)
+════════════════════════════════════════════════════════════════════════════════
+
+Predicción 0 (Mano Derecha):
+  → DEDOS: Abiertos (PWM 30, resorte retrae)
+  → MUÑECA: Posición inicial (PWM 90, neutra)
+
+Predicción 1 (Mano Izquierda):
+  → DEDOS: Cerrados (PWM 120, cierra puño)
+  → MUÑECA: Pronación (PWM 60, giro izquierda)
+
+════════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING RÁPIDO
+════════════════════════════════════════════════════════════════════════════════
+
+❌ Error .fdt not found
+→ CONVERTIR_CDT_A_SET('archivo.cdt') falla
+→ Verifica que EEGLAB está instalado
+
+❌ COM3 no se abre
+→ Device Manager: ESP32 conectado a COM3?
+→ Cierra Serial Monitor de Arduino IDE
+→ Reinicia MATLAB
+
+❌ Mano no se mueve
+→ Serial Monitor: ¿Recibe mensajes del ESP32?
+→ Verifica voltaje en pines servo (5V)
+→ ¿Código cargado correctamente? (Setup message en Serial Monitor)
+
+════════════════════════════════════════════════════════════════════════════════
+ARCHIVOS PRINCIPALES
+════════════════════════════════════════════════════════════════════════════════
+
+SCRIPT MAESTRO:
+  ► control_final.m ..................... TODO integrado (EMPEZAR AQUÍ)
+
+UTILIDADES:
+  • DEMO_FLEXIBLE.m ..................... Demo sin integración completa
+  • TEST_ESP32_SIMULADO.m .............. Testing sin hardware
+  • CONVERTIR_CDT_A_SET.m .............. .cdt → .set
+
+HARDWARE:
+  • esp32_bci_hand_v2.cpp .............. Código Arduino (v2.0)
+  • CARGAR_EN_ARDUINO_V2.txt ........... Instrucciones Arduino IDE
+
+DOCUMENTACIÓN:
+  • INICIO_RAPIDO.txt .................. Este archivo
+  • MODULO_BATCH_...m .................. Training (para futuro)
+
+════════════════════════════════════════════════════════════════════════════════
+FLUJO TÍPICO
+════════════════════════════════════════════════════════════════════════════════
+
+PRIMERA VEZ (setup):
+  1. Cargar esp32_bci_hand_v2.cpp en Arduino IDE (5 min)
+  2. Conectar hardware (dedos + muñeca) (5 min)
+  
+CADA VEZ QUE USES:
+  1. >> control_final('archivo.cdt')
+     ↓
+  2. Automáticamente:
+     - Procesa señal
+     - Entrena/carga modelo
+     - Hace predicciones
+     - Controla servos
+
+TIEMPO TOTAL: ~30-60 seg por análisis
