@@ -65,6 +65,7 @@ bci-mano-robotica/
 ├── modelos/
 │   └── Modelo_BCI_Completo_Wav.mat   Red entrenada + normalización
 ├── docs/
+│   ├── CONTROL_DE_VERSION.md           Git, ramas, datos sensibles
 │   ├── GUIA_RAPIDA_V2.txt            Inicio rápido
 │   ├── CARGAR_EN_ARDUINO_V2.txt      Carga del firmware
 │   ├── RESUMEN_SISTEMA_V2.txt        Documentación técnica
@@ -72,6 +73,29 @@ bci-mano-robotica/
 ├── resultados/              Salidas de ejecución (ignoradas por git)
 └── .gitignore
 ```
+
+---
+
+## Control de versiones
+
+Repositorio **privado** en `github.com/Victor-Curiel/mano-robotica-humanoide-bci`,
+rama `main`.
+
+```powershell
+git status              # ver qué cambió
+git add .
+git commit -m "mensaje"
+git push
+```
+
+Se versiona **código, modelos y documentación**. Las señales EEG de los sujetos
+de prueba quedan fuera del repositorio por confidencialidad: el repo guarda
+*cómo* se procesa la señal, nunca la señal. El modelo entrenado
+(`modelos/Modelo_BCI_Completo_Wav.mat`) sí se versiona, porque sin él el
+pipeline no es reproducible.
+
+Guía completa —deshacer cambios, ramas, tags por hito de tesis, resolución de
+problemas de PATH— en [`docs/CONTROL_DE_VERSION.md`](docs/CONTROL_DE_VERSION.md).
 
 ---
 
