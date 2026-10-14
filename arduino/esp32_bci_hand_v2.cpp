@@ -44,6 +44,11 @@
  *   - Rango útil MG995: 30-120
  *   - Rango útil SG90: 60-90
  *
+ *   Compatibilidad de core: este sketch compila tanto con el core ESP32
+ *   2.x (ledcSetup/ledcAttachPin) como con el 3.x (ledcAttach). El core
+ *   3.x eliminó las dos funciones anteriores; las macros pwmConfigurar y
+ *   pwmEscribir aíslan esas diferencias.
+ *
  * CONEXIÓN SERIAL:
  *   ESP32 RX (GPIO 3) ← USB → MATLAB TX
  *   ESP32 TX (GPIO 1) → USB → MATLAB RX
@@ -97,6 +102,18 @@
 #define CLASE_MANO_DERECHA    1   // Y=1 -> carpeta "lado derecho"
 #define CLASE_MANO_IZQUIERDA  0   // Y=0 -> carpeta "lado izquierdo"
 
+// ===== CAPA DE COMPATIBILIDAD LEDC (core 2.x vs 3.x) =====
+// El core 3.x elimino ledcSetup() y ledcAttachPin(). Ahora ledcAttach()
+// liga el canal al pin y ledcWrite() recibe el PIN, no el canal.
+// Estas macros dejan el resto del sketch sin cambios entre versiones.
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+  #define pwmConfigurar(pin, canal, freq, res)  ledcAttach(pin, freq, res)
+  #define pwmEscribir(canal, pin, valor)        ledcWrite(pin, valor)
+#else
+  #define pwmConfigurar(pin, canal, freq, res)  do { ledcSetup(canal, freq, res); ledcAttachPin(pin, canal); } while (0)
+  #define pwmEscribir(canal, pin, valor)        ledcWrite(canal, valor)
+#endif
+
 // ===== VARIABLES GLOBALES =====
 int contador_mensajes = 0;
 unsigned long tiempo_ultimo_mensaje = 0;
@@ -108,16 +125,12 @@ void setup() {
   delay(500);
   
   // Configurar PWM para servos (un canal por servo)
-  ledcSetup(CANAL_DEDOS, PWM_FRECUENCIA, PWM_RESOLUCION);   // Canal 0: dedos
-  ledcSetup(CANAL_MUNECA, PWM_FRECUENCIA, PWM_RESOLUCION);  // Canal 1: muñeca
-  
-  // Asignar cada pin a su canal PWM
-  ledcAttachPin(SERVO_DEDOS, CANAL_DEDOS);     // PIN 23 → Canal 0
-  ledcAttachPin(SERVO_MUNECA, CANAL_MUNECA);   // PIN 17 → Canal 1
+  pwmConfigurar(SERVO_DEDOS, CANAL_DEDOS, PWM_FRECUENCIA, PWM_RESOLUCION);    // PIN 23
+  pwmConfigurar(SERVO_MUNECA, CANAL_MUNECA, PWM_FRECUENCIA, PWM_RESOLUCION);  // PIN 17
   
   // Posición inicial: dedos abiertos, muñeca neutra
-  ledcWrite(CANAL_DEDOS, PWM_DEDOS_ABIERTOS);    // Dedos abiertos
-  ledcWrite(CANAL_MUNECA, PWM_MUNECA_INICIAL);   // Muñeca neutra
+  pwmEscribir(CANAL_DEDOS, SERVO_DEDOS, PWM_DEDOS_ABIERTOS);    // Dedos abiertos
+  pwmEscribir(CANAL_MUNECA, SERVO_MUNECA, PWM_MUNECA_INICIAL);  // Muñeca neutra
   
   // Mensaje de bienvenida
   Serial.println("════════════════════════════════════════════════════════════════════════════");
@@ -180,8 +193,8 @@ void loop() {
       }
       
       // Aplicar PWM a los servos (cada uno en su propio canal)
-      ledcWrite(CANAL_DEDOS, pwm_dedos);      // GPIO 23 - Dedos
-      ledcWrite(CANAL_MUNECA, pwm_muneca);    // GPIO 17 - Muñeca
+      pwmEscribir(CANAL_DEDOS, SERVO_DEDOS, pwm_dedos);        // GPIO 23 - Dedos
+      pwmEscribir(CANAL_MUNECA, SERVO_MUNECA, pwm_muneca);     // GPIO 17 - Muñeca
       
       // Log de mensaje recibido
       Serial.print("[");

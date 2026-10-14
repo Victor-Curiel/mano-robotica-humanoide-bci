@@ -242,6 +242,14 @@ TROUBLESHOOTING
    → Busca la línea que falta y cópiala
    → Vuelve a intentar Upload
 
+❌ "'ledcSetup' was not declared in this scope"
+   → Tu Arduino IDE tiene el core ESP32 3.x, que eliminó ledcSetup y
+     ledcAttachPin. El sketch ya incluye una capa de compatibilidad
+     (macros pwmConfigurar / pwmEscribir) que funciona en 2.x y 3.x,
+     así que asegúrate de estar usando la versión del repo, no una copia
+     vieja. Si prefieres el core 2.x:
+     Tools → Board → Boards Manager → "esp32 by Espressif" → instala 2.0.x
+
 ❌ "Serial Monitor muestra caracteres raros"
    → Verifica baudrate: debe ser 115200
    → Presiona botón RESET en ESP32
