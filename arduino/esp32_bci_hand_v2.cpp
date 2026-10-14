@@ -39,6 +39,8 @@
  * PARÁMETROS PWM:
  *   - Frecuencia: 50 Hz (estándar para servos)
  *   - Resolución: 10 bits (0-1023)
+ *   - Canal LEDC 0 → MG995 (dedos)
+ *   - Canal LEDC 1 → SG90 (muñeca)
  *   - Rango útil MG995: 30-120
  *   - Rango útil SG90: 60-90
  *
@@ -77,6 +79,12 @@
 #define PWM_FRECUENCIA 50      // Hz (servo standard)
 #define PWM_RESOLUCION 10      // bits (0-1023)
 
+// Cada servo usa su PROPIO canal LEDC. Si ambos comparten un canal,
+// el segundo ledcWrite sobrescribe al primero y los dos servos terminan
+// recibiendo el mismo PWM (el ultimo escrito).
+#define CANAL_DEDOS   0
+#define CANAL_MUNECA  1
+
 // PWM del MG995 (dedos 1-5 simultáneos)
 #define PWM_DEDOS_ABIERTOS  30   // posición inicial; los retrae el resorte
 #define PWM_DEDOS_CERRADOS  120  // cierra el puño
@@ -99,16 +107,17 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   
-  // Configurar PWM para servos
-  ledcSetup(0, PWM_FRECUENCIA, PWM_RESOLUCION);  // Canal 0, 50 Hz, 10 bits
+  // Configurar PWM para servos (un canal por servo)
+  ledcSetup(CANAL_DEDOS, PWM_FRECUENCIA, PWM_RESOLUCION);   // Canal 0: dedos
+  ledcSetup(CANAL_MUNECA, PWM_FRECUENCIA, PWM_RESOLUCION);  // Canal 1: muñeca
   
-  // Asignar pines al canal PWM
-  ledcAttachPin(SERVO_DEDOS, 0);    // PIN 23 → Canal 0
-  ledcAttachPin(SERVO_MUNECA, 0);   // PIN 17 → Canal 0 (mismo canal, sincronizado)
+  // Asignar cada pin a su canal PWM
+  ledcAttachPin(SERVO_DEDOS, CANAL_DEDOS);     // PIN 23 → Canal 0
+  ledcAttachPin(SERVO_MUNECA, CANAL_MUNECA);   // PIN 17 → Canal 1
   
   // Posición inicial: dedos abiertos, muñeca neutra
-  ledcWrite(0, PWM_DEDOS_ABIERTOS);   // Dedos abiertos
-  ledcWrite(0, PWM_MUNECA_INICIAL);   // Muñeca neutra
+  ledcWrite(CANAL_DEDOS, PWM_DEDOS_ABIERTOS);    // Dedos abiertos
+  ledcWrite(CANAL_MUNECA, PWM_MUNECA_INICIAL);   // Muñeca neutra
   
   // Mensaje de bienvenida
   Serial.println("════════════════════════════════════════════════════════════════════════════");
@@ -122,7 +131,7 @@ void setup() {
   Serial.println("PWM configurado:");
   Serial.println("  • Frecuencia: 50 Hz");
   Serial.println("  • Resolución: 10 bits (0-1023)");
-  Serial.println("  • Canal: 0 (ambos pines)");
+  Serial.println("  • Canales: 0 (dedos) y 1 (muñeca)");
   Serial.println("");
   Serial.println("Estado inicial:");
   Serial.println("  • Dedos: ABIERTOS (PWM 30)");
@@ -170,10 +179,9 @@ void loop() {
         pwm_muneca  = PWM_MUNECA_PRONACION;   // Mano izquierda: pronar la muñeca
       }
       
-      // Aplicar PWM a los servos
-      ledcWrite(0, pwm_dedos);    // GPIO 23 - Dedos
-      delayMicroseconds(100);     // Pequeño delay para estabilidad
-      ledcWrite(0, pwm_muneca);   // GPIO 17 - Muñeca
+      // Aplicar PWM a los servos (cada uno en su propio canal)
+      ledcWrite(CANAL_DEDOS, pwm_dedos);      // GPIO 23 - Dedos
+      ledcWrite(CANAL_MUNECA, pwm_muneca);    // GPIO 17 - Muñeca
       
       // Log de mensaje recibido
       Serial.print("[");
