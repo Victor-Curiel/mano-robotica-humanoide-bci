@@ -10,3 +10,4 @@ pytest>=7.4
 pytest-cov>=4.1
 pandas>=2.0
 curryreader>=0.1
+eeglabio>=0.0.3

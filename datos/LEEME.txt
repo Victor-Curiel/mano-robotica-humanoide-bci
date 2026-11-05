@@ -1,0 +1,4 @@
+﻿datos/cdt/<sujeto>/    -> coloca aqui el .cdt (+ .dpa) y el CSV de eventos (ver _ejemplo_sujeto/eventos_ejemplo.csv)
+datos/epocas/basal|apretar|estirar -> salida de 'python -m src.cdt_to_set epochs' (entrada de train_model)
+datos/ojos_abiertos, ojos_cerrados -> registros .cdt/.set para la comparacion de la conclusion
+El contenido se ignora en git (datos de sujetos).

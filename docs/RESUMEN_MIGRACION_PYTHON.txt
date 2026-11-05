@@ -11,133 +11,184 @@ Wavelet y Deep Learning) a Python con librerias de codigo abierto:
 MNE-Python (lectura EEG), SciPy y PyWavelets (DSP), PyTorch (red neuronal),
 scikit-learn (metricas) y PySerial (ESP32).
 
-El firmware del ESP32 NO cambia. El protocolo serial es el mismo:
-"clase,conf,clase,conf,timestamp\n" a 115200 baud.
+NUEVO ENFOQUE EXPERIMENTAL (ver Modificaciones.txt): ya no se clasifica
+mano izquierda vs derecha. Con la mano dominante (derecha) se clasifican
+3 estados:
+  Estado     (dedos,muneca)  Estimulo                         Accion del hardware
+  basal      (0,0)           ninguno                          reposo
+  apretar    (1,0)           circulo rojo + tono 1000 Hz      cierra dedos (MG995)
+  estirar    (0,1)           cuadrado verde + tono 500 Hz     gira muneca (SG90)
+  El estado (1,1) no existe.
+Protocolo serial (115200 baud): "ded,conf,mun,conf,timestamp\n".
+El firmware (arduino/esp32_bci_hand_v2.cpp) se actualizo a esta logica y
+debe recargarse en el ESP32.
 
 =====================================================================
-2. ESTRUCTURA DEL REPOSITORIO (misma organizacion que el proyecto MATLAB)
+2. ESTRUCTURA DEL REPOSITORIO
 =====================================================================
-  src/            Codigo Python (antes: scripts .m)
-    config.py              Parametros y rutas centralizados
-    feature_extraction.py  Welch, Burg, Wavelet db4 -> vector de 9 caracteristicas
-    preprocessing.py       Lectura .set/.cdt, filtrado, construccion del dataset
-    utils.py               Filtro IQR (outliers) y z-score
-    model.py               Red MLP 9->10->2 y entrenamiento
-    predictor.py           Prediccion continua con ventana deslizante
-    validation.py          Matriz de confusion, accuracy, sensibilidad, especificidad
-    hardware.py            Comunicacion serial con el ESP32
-    train_model.py         Entrenar        (reemplaza MODULO_BATCH...PLOT.m)
-    predict_continuous.py  Predecir/enviar (reemplaza control_final, PREDICTOR_*, ENVIAR_A_ESP32)
-    validate.py            Validar         (reemplaza VALIDADOR_CON_LABELS.m)
-  arduino/        Firmware ESP32 (sin cambios)
-  modelos/        Modelo entrenado: bci_model.pth + normalization_stats.json
-                  (el .mat anterior se conserva como referencia)
-  docs/           Documentacion
-  tests/          Pruebas automaticas (11 pruebas, pytest)
-  resultados/     Salidas de ejecucion (no versionadas)
-  _MATLAB_LEGACY/ Scripts .m originales, archivados
+  src/             Codigo Python (antes: scripts .m)
+  arduino/         Firmware ESP32 (actualizado a 3 estados)
+  modelos/         bci_model.pth + normalization_stats.json (se generan al
+                   entrenar), LEGACY_* (modelo izq/der) y el .mat de MATLAB
+  datos/           Datos de sujetos (ignorados por git; ver datos/LEEME.txt)
+    cdt/<sujeto>/            .cdt originales + CSV de eventos
+    epocas/basal|apretar|estirar/   .set de epocas por estado (entrenamiento)
+    ojos_abiertos/ ojos_cerrados/   registros para la comparacion de tesis
+  docs/            Documentacion
+  tests/           Pruebas automaticas (pytest)
+  resultados/      Salidas de ejecucion (no versionadas)
+  _MATLAB_LEGACY/  Scripts .m originales, archivados
+
+=====================================================================
+3. DESGLOSE DE CADA PROGRAMA PYTHON Y QUE SUSTITUYE
+=====================================================================
+--- Modulos (bibliotecas, no se ejecutan solos) ---
+
+src/config.py                      [sustituye: variables hardcodeadas al
+                                    inicio de cada .m (rutas, fs, canales,
+                                    ventanas, puerto COM)]
+  Unico lugar con parametros: rutas de datos, banda 8-12 Hz, ventana 1 s /
+  paso 0.5 s, orden Burg 16, wavelet db4 nivel 4, MLP, puerto y baudios,
+  nombres de clases y su mapeo a (dedos,muneca).
+
+src/feature_extraction.py          [sustituye: bloques de pwelch, pburg,
+                                    wavedec/detcoef y bandpower repetidos en
+                                    MODULO_BATCH, PREDICTOR_DATOS_CRUDOS,
+                                    PREDICTOR_MUNECA, control_final]
+  Calcula las 9 caracteristicas: potencia en banda por Welch (C3,C4,Cz),
+  por Burg orden 16 (implementacion propia, SciPy no la trae) y energia del
+  detalle D4 de wavelet db4. Tambien valida ventanas (NaN, varianza ~0).
+  En MATLAB este codigo estaba copiado 4 veces; ahora existe una sola vez.
+
+src/preprocessing.py               [sustituye: pop_loadset, pop_eegfilt y los
+                                    bucles de lectura de carpetas de
+                                    MODULO_BATCH]
+  Lee .set (epocas) y .cdt/.set continuos con MNE, selecciona C3/C4/Cz,
+  convierte a microvolts, filtra FIR 8-12 Hz, y arma la matriz X/y/sesion
+  recorriendo las carpetas de cada estado.
+
+src/utils.py                       [sustituye: isoutlier('quartiles'),
+                                    zscore, mean/std y save/load de .mat]
+  Filtro IQR de artefactos, z-score, guardado de estadisticas en JSON.
+
+src/model.py                       [sustituye: patternnet([10]) + train()
+                                    del Deep Learning Toolbox]
+  Red MLP 9 -> 10 (tanh) -> 3 (softmax) en PyTorch, entrenamiento con
+  Adam y parada temprana sobre un 15% de validacion.
+
+src/predictor.py                   [sustituye: PREDICTOR_DATOS_CRUDOS.m y
+                                    PREDICTOR_MUNECA.m (los dos usaban la
+                                    misma red)]
+  Carga modelo + normalizacion y clasifica ventanas deslizantes. Devuelve
+  clase, confianza y tiempo. Ventana invalida -> basal con confianza 0.
+
+src/validation.py                  [sustituye: confusionmat y calculos
+                                    manuales de VALIDADOR_CON_LABELS.m]
+  Etiqueta por tiempo desde un CSV, matriz de confusion 3x3, accuracy y
+  recall por clase.
+
+src/hardware.py                    [sustituye: serialport/fprintf de
+                                    ENVIAR_A_ESP32.m y control_final.m]
+  Convierte la clase a (dedos,muneca), formatea el mensaje y lo envia por
+  PySerial. Acepta un puerto simulado para pruebas sin hardware.
+
+--- Programas ejecutables (python -m src.<nombre>) ---
+
+src/cdt_to_set.py                  [sustituye: CONVERTIR_CDT_A_SET.m]
+  Convierte .cdt a .set y permite MARCAR EVENTOS mediante un CSV
+  (onset_s, duration_s, label). Dos comandos:
+    convert : .cdt -> *_crudo.set continuo con anotaciones (igual que el .m).
+    epochs  : filtra 8-12 Hz, corta ventanas de 1 s dentro de cada segmento
+              etiquetado y guarda un .set por estado en datos/epocas/.
+  Ya no hace falta EEGLAB ni abrir el .cdt manualmente para marcar eventos.
+
+src/train_model.py                 [sustituye: MODULO_BATCH_EXTRACCION_...
+                                    PLOT.m]
+  Extrae caracteristicas de datos/epocas/*, elimina outliers IQR, valida
+  dejando una sesion fuera (MLP y regresion logistica de referencia),
+  entrena el modelo final y guarda modelos/bci_model.pth y
+  modelos/normalization_stats.json.
+
+src/predict_continuous.py          [sustituye: control_final.m,
+                                    ENVIAR_A_ESP32.m, DEMO_FLEXIBLE.m,
+                                    TEST_ESP32_SIMULADO.m (con --dry-run)]
+  Lee un .cdt/.set continuo, predice con ventana deslizante, guarda
+  resultados/predictions.npz y, opcionalmente, envia al ESP32 (--port COM3)
+  o imprime los mensajes (--dry-run).
+
+src/validate.py                    [sustituye: VALIDADOR_CON_LABELS.m]
+  Compara predicciones guardadas contra un CSV de etiquetas y muestra
+  accuracy, recall por clase y matriz de confusion.
+
+tests/                             [sustituye: nada; en MATLAB no habia]
+  Pruebas automaticas: Burg recupera coeficientes AR conocidos, Welch
+  conserva la varianza, formato serial para los 3 estados, ESP32 simulado,
+  metricas, segmentacion de eventos y una prueba con datos reales.
 
 Correspondencia de funciones:
-  pwelch -> scipy.signal.welch | pburg -> implementacion propia del metodo de Burg
+  pwelch -> scipy.signal.welch | pburg -> Burg propio
   wavedec/detcoef -> pywt.wavedec | bandpower -> integral trapezoidal
-  pop_loadset -> mne.io.read_epochs_eeglab | pop_eegfilt -> filtro FIR de MNE
-  patternnet([10]) -> torch (Linear 9->10, tanh, Linear 10->2, softmax)
-  serialport -> pyserial | confusionmat -> scikit-learn
+  pop_loadset -> mne.io.read_epochs_eeglab | pop_eegfilt -> filtro FIR MNE
+  patternnet -> torch | serialport -> pyserial | confusionmat -> scikit-learn
+  LOAD_CDT / pop_saveset -> mne.io.read_raw_curry / raw.export
 
 =====================================================================
-3. PIPELINE
+4. FLUJO DE TRABAJO CON SUJETOS NUEVOS
 =====================================================================
-EEG (.set / .cdt)
- -> canales C3, C4, Cz (en microvolts)
- -> 9 caracteristicas: potencia en banda por Welch (3), por Burg orden 16 (3)
-    y energia del detalle D4 de wavelet db4 (3)
- -> eliminacion de artefactos por IQR (k = 1.5)
- -> normalizacion z-score (media y desviacion de entrenamiento)
- -> MLP 9 -> 10 (tanh) -> 2 (softmax)
- -> clase 1 = mano derecha (cierra puno), clase 0 = izquierda (pronacion)
- -> serial -> ESP32 -> servos MG995 y SG90
+1) Copiar el .cdt a datos/cdt/<sujeto>/ y crear eventos.csv junto a el
+   (plantilla: datos/cdt/_ejemplo_sujeto/eventos_ejemplo.csv). Los tiempos
+   se obtienen de la guia del experimento / video (no hay marcas en el
+   canal Trigger de los .cdt actuales).
+2) python -m src.cdt_to_set epochs datos/cdt/<sujeto>/archivo.cdt
+       --events datos/cdt/<sujeto>/eventos.csv --session <sujeto><ddmmaa>-<n>
+   Genera los .set por estado en datos/epocas/.
+3) python -m src.train_model     (validacion + entrenamiento)
+4) python -m src.predict_continuous archivo.cdt --dry-run   (o --port COM3)
 
-Prediccion continua: ventana de 1 s, paso de 0.5 s.
-
-=====================================================================
-4. HALLAZGOS IMPORTANTES SOBRE LOS DATOS Y EL CODIGO ORIGINAL
-=====================================================================
-a) Frecuencia de muestreo. Los .set estan a 1024 Hz, pero el codigo MATLAB
-   fijaba fs = 500. Eso desplazaba el eje de frecuencias: la banda "13-30 Hz"
-   de MATLAB correspondia en realidad a ~27-61 Hz. En Python se usa siempre la
-   frecuencia real del archivo.
-b) Los .set ya vienen segmentados en epocas de 1 s y filtrados (_Filter).
-   Hay 425 epocas (179 derecha, 246 izquierda) en 41 archivos. Por eso la
-   ventana de prediccion es de 1 s (antes 2 s).
-c) Todos los datos son de un solo sujeto, en 6 sesiones (por fecha).
-d) El firmware solo usa el primer campo de clase; los campos de muneca se
-   mantienen por compatibilidad. Se usa un solo clasificador.
-e) Unidades: MNE trabaja en Volts y EEGLAB en microvolts; se convierte a uV.
+El nombre de sesion debe tener la forma <nombre><ddmmaa>-<n> porque la
+validacion deja una sesion fuera usando ese identificador.
 
 =====================================================================
-5. VALIDACION Y RESULTADOS
+5. HALLAZGOS SOBRE LOS DATOS Y EL CODIGO ORIGINAL
 =====================================================================
-No existe baseline de MATLAB (no se conserva su accuracy), por lo que no se
-puede comparar directamente contra el sistema anterior.
-
-Metodo: validacion "dejar una sesion fuera" (leave-one-session-out). Se
-entrena con 5 sesiones y se prueba en la sesion restante, evitando que
-epocas casi identicas queden en entrenamiento y prueba. La normalizacion se
-ajusta solo con los datos de entrenamiento de cada fold.
-
-Resultados con banda 8-12 Hz (tras IQR: 257 epocas, 71 derecha / 186 izq.):
-  MLP                     accuracy 0.728 +- 0.095
-  Regresion logistica     accuracy 0.696 +- 0.090 (referencia simple)
-  Azar                    0.50
-  Rango por sesion (MLP)  0.56 a 0.84
-
-Experimento de banda (regresion logistica, misma validacion):
-  13-30 Hz (beta, original)  0.60
-  8-30 Hz                    0.61
-  8-13 Hz                    0.69
-Con la banda beta y la fs real el desempeno fue menor que el de MATLAB con
-fs=500 mal escalado (0.64). Se decidio usar 8-12 Hz (mu/alfa), asociada a
-la desincronizacion sensoriomotora en imaginacion motora.
-
-Pruebas automaticas (11, todas pasan): Burg recupera coeficientes AR
-conocidos; Welch conserva la varianza; la energia wavelet escala
-cuadraticamente; formato del mensaje serial; interfaz ESP32 con puerto
-simulado; metricas; entrenamiento sobre datos separables; y una prueba con
-datos reales.
+a) Los .set originales estan a 1024 Hz, pero MATLAB fijaba fs = 500; la
+   banda "13-30 Hz" de MATLAB era en realidad ~27-61 Hz. Python usa la fs
+   real del archivo.
+b) Los .set antiguos ya venian en epocas de 1 s, de un solo sujeto
+   (6 sesiones). Con ellos, izquierda/derecha, banda 8-12 Hz, validacion
+   dejando una sesion fuera: MLP 0.73 +- 0.10 (azar 0.50). Ese modelo ya
+   no aplica al nuevo esquema (se conserva como LEGACY_*).
+c) Los .cdt nuevos (ojos abiertos/cerrados) no traen marcas de evento.
+d) Unidades: MNE trabaja en Volts y EEGLAB en microvolts; se convierte.
 
 =====================================================================
-6. LIMITACIONES (para comentar con el asesor)
+6. LIMITACIONES
 =====================================================================
-- Un solo sujeto: no se mide generalizacion entre personas.
-- El IQR elimina ~40% de las epocas (425 -> 257) y desbalancea las clases
-  (71 vs 186). No se aplico balanceo de clases.
-- Precision moderada (~73%); la variacion entre sesiones es alta.
-- La banda 8-12 Hz es un cambio respecto a la tesis original (13-30 Hz);
-  debe justificarse con los resultados anteriores.
-- Sin baseline de MATLAB; el criterio de aceptacion es el desempeno sobre
-  el azar y la regresion logistica.
-- No se ha probado con el ESP32 fisico; solo con puerto simulado y modo
-  --dry-run.
-- La entrada .cdt continua requiere el paquete curryreader.
+- El modelo de 3 estados aun no esta entrenado: faltan epocas etiquetadas.
+- Sujeto unico hasta ahora; los nuevos permitiran validar entre sujetos.
+- Sin baseline MATLAB; el criterio es superar el azar (0.33 con 3 clases) y
+  la regresion logistica.
+- El firmware actualizado no se ha compilado ni probado en hardware.
+- Los .set antiguos se filtraron con parametros desconocidos; los nuevos
+  se filtran en 8-12 Hz de forma explicita.
+- Las pruebas ojos abiertos/cerrados aun no tienen analisis programado
+  (ver seccion 7).
 
 =====================================================================
-7. PROXIMOS PASOS
+7. PRUEBAS DE OJOS ABIERTOS / CERRADOS (conclusion de la tesis)
 =====================================================================
-- Capturar mas sujetos (en curso) y reentrenar con:
-    python -m src.train_model
-- Validacion cruzada por sujeto (leave-one-subject-out) con los nuevos datos.
-- Prueba con el ESP32 conectado.
-- Evaluar balanceo de clases y un umbral IQR menos agresivo.
-- Release v2.0-python.
+Se usan para sustentar que el control no depende de funciones del aparato
+visual. Las carpetas datos/ojos_abiertos y datos/ojos_cerrados estan listas
+para recibir esos registros. Una comparacion natural, aun por programar, es
+repetir la clasificacion en ambas condiciones y comparar exactitud.
 
 =====================================================================
 8. COMO EJECUTARLO
 =====================================================================
   python -m venv C:\bcivenv
   C:\bcivenv\Scripts\python -m pip install -r requirements.txt
+  python -m src.cdt_to_set epochs ...      (ver seccion 4)
   python -m src.train_model
-  python -m src.predict_continuous archivo.cdt --dry-run     (--port COM3 para enviar)
+  python -m src.predict_continuous archivo.cdt --dry-run
   python -m src.validate etiquetas.csv
   python -m pytest
-
-Rutas de datos: src/config.py (o variables BCI_DATA_RIGHT, BCI_DATA_LEFT).

@@ -107,3 +107,10 @@ def test_validation_metrics():
     m = compute_metrics(truth, [0, 0, 0, 0, 2, 2, 2, 0, 2, 2])
     assert m["n"] == 8 and m["accuracy"] == pytest.approx(7 / 8)
     assert m["recall"][0] == 1.0 and m["recall"][2] == pytest.approx(3 / 4) and np.isnan(m["recall"][1])
+
+
+def test_segment_windows_only_full_windows_per_label():
+    from src.cdt_to_set import segment_windows
+    ev = pd.DataFrame({"onset_s": [0, 10], "duration_s": [3.5, 2], "label": ["basal", "estirar"]})
+    w = list(segment_windows(ev, fs=100, n_times=1500, win_s=1, step_s=1))
+    assert w == [(0, 0), (100, 0), (200, 0), (1000, 2), (1100, 2)]

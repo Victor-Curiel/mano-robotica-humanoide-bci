@@ -11,12 +11,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # --- Datos ---------------------------------------------------------------
-_ACQ = Path(r"C:\Users\vhca1\Desktop\Acquisition")
-# Carpetas con .set (epocas) por estado. Sobrescribibles: BCI_DATA_BASAL / _APRETAR / _ESTIRAR
+# datos/cdt/<sujeto>/        .cdt originales + CSV de eventos
+# datos/epocas/<estado>/     .set de epocas por estado (entrada del entrenamiento)
+# datos/ojos_abiertos|ojos_cerrados/  registros para la comparacion de la tesis
+DATA_ROOT = ROOT / "datos"
+CDT_DIR = DATA_ROOT / "cdt"
+EPOCHS_DIR = DATA_ROOT / "epocas"
+# Sobrescribibles: BCI_DATA_BASAL / _APRETAR / _ESTIRAR
 DATA_DIRS = {
-    0: Path(os.environ.get("BCI_DATA_BASAL", _ACQ / "basal")),
-    1: Path(os.environ.get("BCI_DATA_APRETAR", _ACQ / "apretar")),
-    2: Path(os.environ.get("BCI_DATA_ESTIRAR", _ACQ / "estirar")),
+    0: Path(os.environ.get("BCI_DATA_BASAL", EPOCHS_DIR / "basal")),
+    1: Path(os.environ.get("BCI_DATA_APRETAR", EPOCHS_DIR / "apretar")),
+    2: Path(os.environ.get("BCI_DATA_ESTIRAR", EPOCHS_DIR / "estirar")),
 }
 
 MODELS_DIR = ROOT / "modelos"

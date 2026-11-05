@@ -73,3 +73,9 @@ build/
 .coverage
 htmlcov/
 *.egg-info/
+
+# Datos de sujetos (privados)
+datos/**
+!datos/**/.gitkeep
+!datos/LEEME.txt
+!datos/cdt/_ejemplo_sujeto/eventos_ejemplo.csv
