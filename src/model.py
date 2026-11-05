@@ -1,4 +1,4 @@
-"""MLP 9 -> 10 (tanh) -> 2 (equivalente a patternnet([10])) y entrenamiento."""
+"""MLP 9 -> 10 (tanh) -> 3 (equivalente a patternnet([10])) y entrenamiento."""
 from __future__ import annotations
 
 import copy
@@ -12,9 +12,9 @@ from . import config as cfg
 
 
 class BCINet(nn.Module):
-    """Salida en logits; usar softmax para probabilidades (clase 1 = derecha)."""
+    """Salida en logits; usar softmax para probabilidades (0 basal, 1 apretar, 2 estirar)."""
 
-    def __init__(self, n_in: int = cfg.N_FEATURES, n_hidden: int = cfg.MLP_HIDDEN, n_out: int = 2):
+    def __init__(self, n_in: int = cfg.N_FEATURES, n_hidden: int = cfg.MLP_HIDDEN, n_out: int = cfg.N_CLASSES):
         super().__init__()
         self.fc1 = nn.Linear(n_in, n_hidden)
         self.act = nn.Tanh()
@@ -70,7 +70,7 @@ def train_model(X: np.ndarray, y: np.ndarray, config: dict | None = None) -> tup
 
 
 def predict_proba(model: BCINet, X: np.ndarray) -> np.ndarray:
-    """Probabilidades [n, 2] (columna 0 = izquierda, columna 1 = derecha)."""
+    """Probabilidades [n, 3] (una columna por clase)."""
     model.eval()
     with torch.no_grad():
         return torch.softmax(model(torch.as_tensor(X, dtype=torch.float32)), dim=1).numpy()

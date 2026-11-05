@@ -19,7 +19,7 @@ El pipeline MATLAB (`src/*.m`) queda como referencia hist?rica. La versi?n activ
 python -m venv C:\bcivenv
 C:\bcivenv\Scripts\python -m pip install -r requirements.txt
 
-# Entrenar (lee DATA_RIGHT / DATA_LEFT de src/config.py o BCI_DATA_RIGHT / BCI_DATA_LEFT)
+# Entrenar 3 estados: basal / apretar / estirar (carpetas DATA_DIRS en src/config.py o BCI_DATA_BASAL / _APRETAR / _ESTIRAR)
 python -m src.train_model
 
 # Predecir sobre un .cdt/.set; --dry-run imprime, --port COM3 env?a al ESP32
@@ -32,7 +32,7 @@ python -m src.validate labels.csv
 python -m pytest
 ```
 
-Par?metros clave (`src/config.py`): banda 8-12 Hz, ventana 1 s / paso 0.5 s, MLP 9?10?2,
+Par?metros clave (`src/config.py`): banda 8-12 Hz, ventana 1 s / paso 0.5 s, MLP 9?10?3 (basal (0,0), apretar (1,0) = cierra dedos, estirar (0,1) = gira mu?eca; (1,1) no existe),
 `fs` real del archivo (1024 Hz; MATLAB fijaba 500). Validaci?n leave-one-session-out
 (1 sujeto, 6 sesiones): MLP ? 0.73 ? 0.10 (azar 0.50). Con un solo sujeto no se mide
 generalizaci?n entre personas.

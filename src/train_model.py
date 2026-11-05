@@ -1,6 +1,6 @@
 """Entrena el MLP BCI. Reemplaza MODULO_BATCH_...PLOT.m.
 
-Uso: python -m src.train_model [--right DIR] [--left DIR] [--no-cv]
+Uso: python -m src.train_model [--basal DIR] [--apretar DIR] [--estirar DIR] [--no-cv]
 
 Evaluacion: leave-one-session-out (sin fuga entre sesiones). El z-score se ajusta
 solo con el conjunto de entrenamiento de cada fold.
@@ -35,28 +35,28 @@ def cross_validate(X, y, groups):
         y_all.extend(y[te])
         p_all.extend(pred)
         print(f"  sesion {groups[te][0]:<14} n={len(te):3d}  MLP={accs[-1]:.3f}  LogReg={base_accs[-1]:.3f}")
-    return accs, base_accs, confusion_matrix(y_all, p_all, labels=[0, 1])
+    return accs, base_accs, confusion_matrix(y_all, p_all, labels=[0, 1, 2])
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--right", type=Path, default=cfg.DATA_RIGHT)
-    ap.add_argument("--left", type=Path, default=cfg.DATA_LEFT)
+    for i, n in enumerate(cfg.CLASS_NAMES):
+        ap.add_argument(f"--{n}", type=Path, default=cfg.DATA_DIRS[i])
     ap.add_argument("--no-cv", action="store_true")
     args = ap.parse_args()
 
-    X, y, groups = build_dataset(args.right, args.left)
+    X, y, groups = build_dataset({i: getattr(args, n) for i, n in enumerate(cfg.CLASS_NAMES)})
     mask = iqr_outlier_mask(X)
     print(f"\nEpocas: {len(y)} | outliers IQR eliminados: {mask.sum()}")
     X, y, groups = X[~mask], y[~mask], groups[~mask]
-    print(f"Utiles: {len(y)}  (derecha={int((y == 1).sum())}, izquierda={int((y == 0).sum())})")
+    print(f"Utiles: {len(y)}  ({', '.join(f'{n}={int((y == i).sum())}' for i, n in enumerate(cfg.CLASS_NAMES))})")
 
     if not args.no_cv:
         print("\nValidacion leave-one-session-out:")
         accs, base, cm = cross_validate(X, y, groups)
         print(f"\nMLP    : {np.mean(accs):.3f} +- {np.std(accs):.3f}")
-        print(f"LogReg : {np.mean(base):.3f} +- {np.std(base):.3f}   (azar = 0.500)")
-        print(f"Matriz de confusion agregada (filas=real 0/1, cols=pred 0/1):\n{cm}")
+        print(f"LogReg : {np.mean(base):.3f} +- {np.std(base):.3f}   (azar = 0.333)")
+        print(f"Matriz de confusion agregada (filas=real, cols=pred; basal/apretar/estirar):\n{cm}")
 
     mu, sd = fit_zscore(X)
     model, hist = train_model(apply_zscore(X, mu, sd), y)

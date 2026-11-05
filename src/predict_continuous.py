@@ -33,8 +33,8 @@ def main() -> None:
     signal, fs = load_continuous(args.file, filter_signal=not args.no_filter)
     pred = SlidingWindowPredictor()
     cls, conf, t = pred.predict_continuous(signal, fs)
-    n1 = int((cls == 1).sum())
-    print(f"{len(cls)} ventanas | derecha={n1} izquierda={len(cls) - n1} | confianza media={np.mean(conf):.3f}")
+    counts = ", ".join(f"{n}={int((cls == i).sum())}" for i, n in enumerate(cfg.CLASS_NAMES))
+    print(f"{len(cls)} ventanas | {counts} | confianza media={np.mean(conf):.3f}")
 
     cfg.RESULTS_DIR.mkdir(exist_ok=True)
     np.savez(cfg.RESULTS_DIR / "predictions.npz", cls=cls, conf=conf, t=t)

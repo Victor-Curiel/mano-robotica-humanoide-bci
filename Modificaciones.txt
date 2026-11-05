@@ -1,0 +1,22 @@
+# CONTEXTO ACTUALIZADO: BCI Mano Biónica (Python Migration & New Control Logic)
+
+Rama actual: `feature/python-migration`
+Migración MATLAB -> Python completada (MNE, SciPy, PyTorch, PySerial). Estructura modular en `src/`.
+
+## 1. NUEVO ENFOQUE EXPERIMENTAL Y LÓGICA DE CONTROL
+El proyecto cambia de clasificación izquierda/derecha a **control de 2 movimientos y un estado basal** con la mano dominante (derecha):
+- **Estados y Estímulos:**
+  - `(0, 0)` = **Basal**: Sin apretar/estirar, sin estímulo. Mano en posición inicial (muñeca en 0°, dedos abiertos a 0°).
+  - `(1, 0)` = **Movimiento 1**: Mano apretada (apertura/cierre de dedos), estímulo círculo rojo + tono 1000Hz.
+  - `(0, 1)` = **Movimiento 2**: Mano estirada (giro de muñeca), estímulo cuadrado verde + tono 500Hz.
+  - El estado `(1, 1)` no existe.
+
+- **Mapeo al Firmware ESP32 / Hardware:**
+  - `(1, 0)` -> Cierra dedos.
+  - `(0, 1)` -> Gira muñeca.
+  - `(0, 0)` -> Estado inicial (reposo).
+
+## 2. OBJETIVO PARA OPENCODE
+Actualizar los scripts de inferencia/predicción continua (`src/predict_continuous.py`, `src/hardware.py`, etc.) para reflejar esta nueva lógica de clases/salidas `(class_1, class_2)` hacia el puerto serial del ESP32, manteniendo el pipeline de preprocesamiento, extracción de características (banda mu/alfa 8-12 Hz) y el modelo MLP ya migrados. 
+
+Prepárate para aplicar las modificaciones requeridas en las pruebas de ojos abiertos y cerrados.

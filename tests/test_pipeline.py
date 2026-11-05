@@ -69,8 +69,8 @@ def test_zscore_and_iqr():
 
 def test_model_trains_on_separable_data(tmp_path):
     rng = np.random.default_rng(6)
-    X = np.vstack([rng.normal(-1, 1, (80, 9)), rng.normal(1, 1, (80, 9))])
-    y = np.r_[np.zeros(80), np.ones(80)].astype(int)
+    X = np.vstack([rng.normal(m, 1, (80, 9)) for m in (-2, 0, 2)])
+    y = np.repeat([0, 1, 2], 80)
     model, hist = train_model(X, y, {"max_epochs": 300})
     assert (predict_proba(model, X).argmax(1) == y).mean() > 0.9
     torch.save(model.state_dict(), tmp_path / "m.pth")
@@ -80,7 +80,9 @@ def test_model_trains_on_separable_data(tmp_path):
 
 
 def test_message_format_matches_firmware_protocol():
-    assert format_message(1, 0.87, 1.234) == "1,0.87,1,0.87,1.234\n"
+    assert format_message(1, 0.87, 1.234) == "1,0.87,0,0.87,1.234\n"   # apretar
+    assert format_message(2, 0.5, 2.0) == "0,0.50,1,0.50,2.000\n"       # estirar
+    assert format_message(0, 0.9, 0.0) == "0,0.90,0,0.90,0.000\n"       # basal
 
 
 def test_esp32_interface_with_fake_serial():
@@ -99,9 +101,9 @@ def test_esp32_interface_with_fake_serial():
 
 
 def test_validation_metrics():
-    ev = pd.DataFrame({"t_start": [0, 4], "t_end": [4, 8], "clase": [0, 1]})
+    ev = pd.DataFrame({"t_start": [0, 4], "t_end": [4, 8], "clase": [0, 2]})
     truth = labels_for_times(np.arange(10.0), ev)
-    assert list(truth[[0, 5, 9]]) == [0, 1, -1]
-    m = compute_metrics(truth, [0, 0, 0, 0, 1, 1, 1, 0, 1, 1])
+    assert list(truth[[0, 5, 9]]) == [0, 2, -1]
+    m = compute_metrics(truth, [0, 0, 0, 0, 2, 2, 2, 0, 2, 2])
     assert m["n"] == 8 and m["accuracy"] == pytest.approx(7 / 8)
-    assert m["sensitivity"] == pytest.approx(3 / 4) and m["specificity"] == 1.0
+    assert m["recall"][0] == 1.0 and m["recall"][2] == pytest.approx(3 / 4) and np.isnan(m["recall"][1])

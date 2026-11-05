@@ -1,7 +1,6 @@
 """Interfaz serial con el ESP32 (protocolo: 'clase,conf,clase,conf,timestamp\\n').
 
-El firmware v2.0 solo decide con el primer campo; los campos de muneca se
-mantienen por compatibilidad, asi que se envia la misma clase en ambos pares.
+Estados: (0,0) basal, (1,0) cierra dedos, (0,1) gira muneca. (1,1) no existe.
 """
 from __future__ import annotations
 
@@ -9,7 +8,9 @@ from . import config as cfg
 
 
 def format_message(clase: int, conf: float, timestamp: float) -> str:
-    return f"{int(clase)},{conf:.2f},{int(clase)},{conf:.2f},{timestamp:.3f}\n"
+    """clase 0/1/2 (basal/apretar/estirar) -> '(dedos),conf,(muneca),conf,ts'."""
+    ded, mun = cfg.CLASS_TO_PAIR[int(clase)]
+    return f"{ded},{conf:.2f},{mun},{conf:.2f},{timestamp:.3f}\n"
 
 
 class ESP32Interface:

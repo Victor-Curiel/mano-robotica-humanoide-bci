@@ -22,7 +22,7 @@ class SlidingWindowPredictor:
     def predict_window(self, window: np.ndarray, fs: float) -> tuple[int, float]:
         """Clase y confianza para una ventana [3, n]. Ventana invalida -> (0, 0.0)."""
         if not is_valid_window(window):
-            return cfg.CLASS_LEFT, 0.0
+            return cfg.CLASS_BASAL, 0.0
         x = apply_zscore(extract_features(window, fs), self.mu, self.sigma)
         p = predict_proba(self.model, x[None, :])[0]
         cls = int(p.argmax())

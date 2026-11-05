@@ -18,7 +18,7 @@ def main() -> None:
     d = np.load(npz)
     truth = labels_for_times(d["t"], load_labels_csv(labels_path))
     m = compute_metrics(truth, d["cls"])
-    print(f"n={m['n']}  accuracy={m['accuracy']:.3f}  sens={m['sensitivity']:.3f}  spec={m['specificity']:.3f}")
+    print(f"n={m['n']}  accuracy={m['accuracy']:.3f}  recall(basal,apretar,estirar)={np.round(m['recall'], 3)}")
     print(m["confusion_matrix"])
 
 

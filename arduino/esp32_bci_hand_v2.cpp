@@ -22,7 +22,8 @@
  *   - conf_mun:   confianza 0-1 (informativa)
  *   - timestamp:  tiempo en segundos (ignorado)
  *
- * MAPEO CLASE -> SERVO (una clase comanda un servo; el otro a inicial):
+ * MAPEO (ded,mun) -> SERVO. Estados nuevos: (0,0) basal, (1,0) apretar -> cierra dedos,
+ *   (0,1) estirar -> gira muneca. (1,1) no existe. (Texto siguiente = esquema anterior izq/der)
  *
  *   clase 1 = MANO DERECHA
  *     MG995 (GPIO 23): PWM 120 -> CIERRA el puño, todos los dedos a la vez
@@ -184,12 +185,16 @@ void loop() {
       int pwm_dedos;
       int pwm_muneca;
       
-      if (clase_ded == CLASE_MANO_DERECHA) {
-        pwm_dedos   = PWM_DEDOS_CERRADOS;    // Mano derecha: cerrar el puño
-        pwm_muneca  = PWM_MUNECA_INICIAL;     // La muñeca no participa
-      } else {
-        pwm_dedos   = PWM_DEDOS_ABIERTOS;     // Los dedos vuelven al inicio
-        pwm_muneca  = PWM_MUNECA_PRONACION;   // Mano izquierda: pronar la muñeca
+      // (1,0) apretar -> cierra dedos | (0,1) estirar -> gira muneca | (0,0) basal -> reposo
+      if (clase_ded == 1 && clase_mun == 0) {
+        pwm_dedos   = PWM_DEDOS_CERRADOS;
+        pwm_muneca  = PWM_MUNECA_INICIAL;
+      } else if (clase_ded == 0 && clase_mun == 1) {
+        pwm_dedos   = PWM_DEDOS_ABIERTOS;
+        pwm_muneca  = PWM_MUNECA_PRONACION;
+      } else {  // (0,0) basal; (1,1) no existe y se trata como reposo
+        pwm_dedos   = PWM_DEDOS_ABIERTOS;
+        pwm_muneca  = PWM_MUNECA_INICIAL;
       }
       
       // Aplicar PWM a los servos (cada uno en su propio canal)
@@ -206,15 +211,13 @@ void loop() {
       Serial.print(") t=");
       Serial.println(timestamp, 2);
       
-      // Log de la accion executada
-      if (clase_ded == CLASE_MANO_DERECHA) {
-        Serial.println("  Mano DERECHA");
-        Serial.println("  -> Dedos: CERRADOS (PWM 120)");
-        Serial.println("  -> Muneca: POSICION INICIAL (PWM 90)");
+      // Log de la accion ejecutada
+      if (clase_ded == 1 && clase_mun == 0) {
+        Serial.println("  APRETAR -> Dedos: CERRADOS (PWM 120), Muneca: INICIAL (PWM 90)");
+      } else if (clase_ded == 0 && clase_mun == 1) {
+        Serial.println("  ESTIRAR -> Dedos: ABIERTOS (PWM 30), Muneca: PRONACION (PWM 60)");
       } else {
-        Serial.println("  Mano IZQUIERDA");
-        Serial.println("  -> Dedos: ABIERTOS (PWM 30, resorte)");
-        Serial.println("  -> Muneca: PRONACION (PWM 60)");
+        Serial.println("  BASAL -> Dedos: ABIERTOS (PWM 30), Muneca: INICIAL (PWM 90)");
       }
       Serial.println("");
       

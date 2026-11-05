@@ -62,11 +62,12 @@ def session_id(path: str | Path) -> str:
 
 
 def build_dataset(
-    right_dir: Path = cfg.DATA_RIGHT, left_dir: Path = cfg.DATA_LEFT, verbose: bool = True
+    dirs: dict[int, Path] | None = None, verbose: bool = True
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Devuelve X [n, 9], y [n] (1=derecha, 0=izquierda) y groups [n] (sesion)."""
+    """Devuelve X [n, 9], y [n] (0 basal, 1 apretar, 2 estirar) y groups [n] (sesion)."""
+    dirs = dirs or cfg.DATA_DIRS
     X, y, groups = [], [], []
-    for folder, label in ((right_dir, cfg.CLASS_RIGHT), (left_dir, cfg.CLASS_LEFT)):
+    for label, folder in sorted(dirs.items()):
         files = sorted(Path(folder).glob("*.set"))
         if not files:
             raise FileNotFoundError(f"sin archivos .set en {folder}")
@@ -81,5 +82,5 @@ def build_dataset(
                 y.append(label)
                 groups.append(session_id(f))
         if verbose:
-            print(f"{folder.name}: {len(files)} archivos, {n_skipped} epocas descartadas")
+            print(f"{cfg.CLASS_NAMES[label]}: {len(files)} archivos, {n_skipped} epocas descartadas")
     return np.array(X), np.array(y), np.array(groups)

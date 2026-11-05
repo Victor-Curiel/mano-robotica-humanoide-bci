@@ -19,17 +19,18 @@ def labels_for_times(times: np.ndarray, events: pd.DataFrame, default: int = -1)
     return labels
 
 
-def compute_metrics(y_true, y_pred) -> dict:
-    """Accuracy, sensibilidad (clase 1 = derecha) y especificidad (clase 0). Ignora y_true == -1."""
+def compute_metrics(y_true, y_pred, n_classes: int = 3) -> dict:
+    """Accuracy, recall por clase y matriz de confusion. Ignora y_true == -1."""
     y_true, y_pred = np.asarray(y_true), np.asarray(y_pred)
     m = y_true >= 0
     y_true, y_pred = y_true[m], y_pred[m]
-    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
-    tn, fp, fn, tp = cm.ravel()
+    labels = list(range(n_classes))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    support = cm.sum(axis=1)
+    recall = np.where(support > 0, np.diag(cm) / np.maximum(support, 1), np.nan)
     return {
         "confusion_matrix": cm,
         "accuracy": accuracy_score(y_true, y_pred) if len(y_true) else float("nan"),
-        "sensitivity": tp / (tp + fn) if (tp + fn) else float("nan"),
-        "specificity": tn / (tn + fp) if (tn + fp) else float("nan"),
+        "recall": recall,
         "n": int(m.sum()),
     }

@@ -11,17 +11,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # --- Datos ---------------------------------------------------------------
-DATA_RIGHT = Path(os.environ.get("BCI_DATA_RIGHT", r"C:\Users\vhca1\Desktop\Acquisition\viejo\derecha"))
-DATA_LEFT = Path(os.environ.get("BCI_DATA_LEFT", r"C:\Users\vhca1\Desktop\Acquisition\viejo\izquierda"))
+_ACQ = Path(r"C:\Users\vhca1\Desktop\Acquisition")
+# Carpetas con .set (epocas) por estado. Sobrescribibles: BCI_DATA_BASAL / _APRETAR / _ESTIRAR
+DATA_DIRS = {
+    0: Path(os.environ.get("BCI_DATA_BASAL", _ACQ / "basal")),
+    1: Path(os.environ.get("BCI_DATA_APRETAR", _ACQ / "apretar")),
+    2: Path(os.environ.get("BCI_DATA_ESTIRAR", _ACQ / "estirar")),
+}
 
 MODELS_DIR = ROOT / "modelos"
 MODEL_PATH = MODELS_DIR / "bci_model.pth"
 STATS_PATH = MODELS_DIR / "normalization_stats.json"
 RESULTS_DIR = ROOT / "resultados"
 
-# Clases (identicas a MODULO_BATCH...m linea 154 y al firmware ESP32)
-CLASS_RIGHT = 1
-CLASS_LEFT = 0
+# Estados (clase_dedos, clase_muneca) que recibe el firmware. (1,1) no existe.
+CLASS_BASAL, CLASS_APRETAR, CLASS_ESTIRAR = 0, 1, 2
+N_CLASSES = 3
+CLASS_NAMES = ("basal", "apretar", "estirar")
+CLASS_TO_PAIR = {0: (0, 0), 1: (1, 0), 2: (0, 1)}
 
 # --- Canales -------------------------------------------------------------
 # Orden de features: C3, C4, Cz (igual que MATLAB).
