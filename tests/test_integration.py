@@ -4,7 +4,7 @@ from src.preprocessing import load_set_epochs, build_dataset
 from src.predictor import SlidingWindowPredictor
 import numpy as np
 
-pytestmark = pytest.mark.skipif(not all(d.exists() for d in cfg.DATA_DIRS.values()), reason="datos EEG no disponibles")
+pytestmark = pytest.mark.skipif(not all(list(d.glob('*.set')) for d in cfg.DATA_DIRS.values() if d.exists()) and all(d.exists() for d in cfg.DATA_DIRS.values()), reason="datos EEG no disponibles")
 
 
 def test_real_data_end_to_end():
