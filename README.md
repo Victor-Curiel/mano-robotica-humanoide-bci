@@ -10,6 +10,35 @@ de señales EEG y controla una mano robótica de 2 grados de libertad.
 
 ---
 
+## Versi?n Python (v2.0) ? pipeline vigente
+
+El pipeline MATLAB (`src/*.m`) queda como referencia hist?rica. La versi?n activa es Python.
+
+```powershell
+# Entorno (fuera de OneDrive por el l?mite de ruta larga de Windows)
+python -m venv C:\bcivenv
+C:\bcivenv\Scripts\python -m pip install -r requirements.txt
+
+# Entrenar (lee DATA_RIGHT / DATA_LEFT de src/config.py o BCI_DATA_RIGHT / BCI_DATA_LEFT)
+python -m src.train_model
+
+# Predecir sobre un .cdt/.set; --dry-run imprime, --port COM3 env?a al ESP32
+python -m src.predict_continuous archivo.cdt --dry-run
+
+# Validar contra CSV (t_start,t_end,clase)
+python -m src.validate labels.csv
+
+# Tests
+python -m pytest
+```
+
+Par?metros clave (`src/config.py`): banda 8-12 Hz, ventana 1 s / paso 0.5 s, MLP 9?10?2,
+`fs` real del archivo (1024 Hz; MATLAB fijaba 500). Validaci?n leave-one-session-out
+(1 sujeto, 6 sesiones): MLP ? 0.73 ? 0.10 (azar 0.50). Con un solo sujeto no se mide
+generalizaci?n entre personas.
+
+---
+
 ## Arquitectura
 
 ```

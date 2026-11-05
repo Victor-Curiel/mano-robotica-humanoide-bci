@@ -68,3 +68,8 @@ build/
 # Overleaf
 *.synctex
 *.run.xml
+# Python tooling
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
