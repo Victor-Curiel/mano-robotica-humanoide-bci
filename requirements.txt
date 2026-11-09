@@ -11,3 +11,4 @@ pytest-cov>=4.1
 pandas>=2.0
 curryreader>=0.1
 eeglabio>=0.0.3
+pygame>=2.5

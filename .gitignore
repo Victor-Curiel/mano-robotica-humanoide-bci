@@ -79,3 +79,6 @@ datos/**
 !datos/**/.gitkeep
 !datos/LEEME.txt
 !datos/cdt/_ejemplo_sujeto/eventos_ejemplo.csv
+
+# Registros de estimulos (privados)
+Registro De Pruebas/*.csv

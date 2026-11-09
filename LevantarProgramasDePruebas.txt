@@ -1,0 +1,7 @@
+cd "C:\Users\vhca1\OneDrive\Documentos\UPIITA\10mo Semestre\TT2\TT1\Trabajo Terminal\mano-robotica-humanoide-bci"
+
+# Protocolo normal (estímulo 2 s, intervalo 2-6 s, intro 10 s)
+C:\bcivenv\Scripts\python src\Experimento.py
+
+# Protocolo rápido (estímulo 0.5 s, intervalo 0.8-1.8 s, intro 5 s)
+C:\bcivenv\Scripts\python src\ExperimentoRapido.py

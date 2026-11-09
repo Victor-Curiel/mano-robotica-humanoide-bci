@@ -114,3 +114,14 @@ def test_segment_windows_only_full_windows_per_label():
     ev = pd.DataFrame({"onset_s": [0, 10], "duration_s": [3.5, 2], "label": ["basal", "estirar"]})
     w = list(segment_windows(ev, fs=100, n_times=1500, win_s=1, step_s=1))
     assert w == [(0, 0), (100, 0), (200, 0), (1000, 2), (1100, 2)]
+
+
+def test_parse_stimuli_and_basal(tmp_path):
+    from src.seleccionar_epocas import basal_between, parse_stimuli
+    p = tmp_path / "s.csv"
+    pd.DataFrame({"Timestamp": ["10:00:20.000", "10:00:25.500"], "Tiempo_Exp": [0, 5.5],
+                  "Estimulo": ["Circulo_Rojo_Der", "Cuadrado_Verde_Izq"],
+                  "Duracion_Show": [0.5, 2.0]}).to_csv(p, index=False)
+    a = parse_stimuli(p, "10:00:10")
+    assert a.values.tolist() == [[10.0, 1.0, "apretar"], [15.5, 2.0, "estirar"]]
+    assert basal_between(a).values.tolist() == [[11.5, 3.5, "basal"]]
