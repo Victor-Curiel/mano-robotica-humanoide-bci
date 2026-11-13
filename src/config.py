@@ -37,7 +37,11 @@ CLASS_TO_PAIR = {0: (0, 0), 1: (1, 0), 2: (0, 1)}
 
 # --- Canales -------------------------------------------------------------
 # Orden de features: C3, C4, Cz (igual que MATLAB).
-CHANNELS = ("C3", "C4", "CZ")
+# Posicion en el casco -> nombre en el registro de Curry (todos los registros nuevos):
+#   C3 -> PZ, C4 -> P8, Cz -> P4   (sitios parietales en la nomenclatura de Curry)
+CHANNELS = ("PZ", "P8", "P4")
+EMG_CHANNEL = "ECG"            # el canal ECG se usa como EMG (solo visualizacion)
+EMG_BAND = (20.0, 400.0)       # Hz, banda para ver actividad muscular
 
 # --- DSP -----------------------------------------------------------------
 # NOTA: MATLAB fijaba fs=500 aunque los .set estan a 1024 Hz (el eje de

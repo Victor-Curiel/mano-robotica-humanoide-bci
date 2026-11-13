@@ -1,3 +1,5 @@
+> **SUPERADO:** plan inicial de migración; el estado real está en README.md y docs/RESUMEN_MIGRACION_PYTHON.txt.
+
 # Plan de Migración: MATLAB/EEGLAB → Python/MNE-Python
 
 **Estado:** Plan integral (Ready for implementation)  

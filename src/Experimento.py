@@ -5,9 +5,6 @@ import csv
 import numpy as np
 from datetime import datetime
 import sys
-from pathlib import Path
-
-REGISTRO_DIR = Path(__file__).resolve().parent.parent / "Registro De Pruebas" 
 import os
 from pathlib import Path
 
@@ -45,11 +42,9 @@ def generar_tono(frecuencia, duracion=0.5, volumen=0.5, sample_rate=44100):
     Genera un objeto de sonido Pygame (onda senoidal) sin archivos externos.
     """
     n_samples = int(sample_rate * duracion)
-    # Generar onda senoidal con numpy
     t = np.linspace(0, duracion, n_samples, False)
     onda = np.sin(2 * np.pi * frecuencia * t) * volumen * 32767
     
-    # Convertir a array de 16-bit estéreo para Pygame
     onda_stereo = np.column_stack((onda, onda)).astype(np.int16)
     return pygame.sndarray.make_sound(onda_stereo)
 
@@ -104,7 +99,7 @@ def presentar_estimulo(pantalla, tipo, sonido_rojo, sonido_verde):
 def main():
     # 1. Inicialización de Pygame y Audio
     pygame.init()
-    pygame.mixer.init(frequency=44100, size=-16, channels=2) # Init mixer
+    pygame.mixer.init(frequency=44100, size=-16, channels=2)
     
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
     pygame.display.set_caption("Protocolo BCI - Visual + Auditivo")
@@ -113,12 +108,22 @@ def main():
     sound_rojo = generar_tono(FREQ_ROJO, duracion=0.5)
     sound_verde = generar_tono(FREQ_VERDE, duracion=0.5)
 
-    # 2. Configuración de Directorio y CSV con Timestamp
-    directorio_destino = str(REGISTRO_DIR)
+    # 2. Configuración de Directorio de Sesión en el Escritorio
+    base_acquisition_dir = Path(r"C:\Users\vhca1\Desktop\Acquisition")
+    fecha_hoy = datetime.now().strftime("%Y-%m-%d")
     
-    # Asegurarse de que la carpeta exista
-    if not os.path.exists(directorio_destino):
-        os.makedirs(directorio_destino, exist_ok=True)
+    # Calcular el número de sesión del día buscando carpetas existentes
+    if base_acquisition_dir.exists():
+        sesiones_hoy = [d for d in os.listdir(base_acquisition_dir) if d.startswith("Sesion") and fecha_hoy in d]
+        num_sesion = len(sesiones_hoy) + 1
+    else:
+        num_sesion = 1
+
+    nombre_carpeta_sesion = f"Sesion{num_sesion}_{fecha_hoy}"
+    directorio_destino = base_acquisition_dir / nombre_carpeta_sesion
+    
+    # Crear la carpeta de la sesión si no existe
+    os.makedirs(directorio_destino, exist_ok=True)
 
     timestamp_inicio = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     nombre_archivo = f"{timestamp_inicio}.csv"
@@ -128,7 +133,8 @@ def main():
     escritor_csv = csv.writer(archivo_csv)
     escritor_csv.writerow(['Timestamp', 'Tiempo_Exp', 'Estimulo', 'Frecuencia_Audio_Hz', 'Duracion_Show', 'ISI_Previo'])
     
-    print(f"--- INICIANDO PRUEBA (Salida: {ruta_completa}) ---")
+    print(f"--- INICIANDO PRUEBA ---")
+    print(f"Guardando en: {ruta_completa}")
 
     # 3. Intro (10s)
     dibujar_texto(pantalla, "La prueba comenzará en breve...", tamano=40)
@@ -142,6 +148,21 @@ def main():
 
     tiempo_inicio_global = time.time()
     
+    # Contadores de eventos
+    contador_rojos = 0
+    contador_verdes = 0
+    
+    # Bolsa para mantener el balance 50% rojos y 50% verdes de forma aleatoria
+    bolsa_estimulos = []
+
+    def obtener_siguiente_estimulo():
+        nonlocal bolsa_estimulos
+        if not bolsa_estimulos:
+            # Lote equilibrado de 5 rojos y 5 verdes barajados aleatoriamente
+            bolsa_estimulos = ['rojo'] * 5 + ['verde'] * 5
+            random.shuffle(bolsa_estimulos)
+        return bolsa_estimulos.pop()
+
     # 5. Bucle Principal
     while True:
         tiempo_actual = time.time()
@@ -150,8 +171,13 @@ def main():
         if t_transcurrido >= DURACION_TOTAL_PRUEBA:
             break
 
-        # A. Selección Aleatoria
-        tipo = random.choice(['rojo', 'verde'])
+        # A. Selección Equilibrada y Aleatoria
+        tipo = obtener_siguiente_estimulo()
+        
+        if tipo == 'rojo':
+            contador_rojos += 1
+        else:
+            contador_verdes += 1
         
         # B. Presentación (Visual + Audio)
         etiqueta = presentar_estimulo(pantalla, tipo, sound_rojo, sound_verde)
@@ -182,10 +208,20 @@ def main():
         
         isi_actual = isi_siguiente
 
-    # 6. Fin
-    dibujar_texto(pantalla, "Prueba Finalizada.", tamano=40)
-    time.sleep(3)
+    # 6. Fin y Resumen en consola
     archivo_csv.close()
+    
+    print("\n========================================")
+    print("           PRUEBA FINALIZADA            ")
+    print("========================================")
+    print(f" Total de estímulos Rojos (Der):   {contador_rojos}")
+    print(f" Total de estímulos Verdes (Izq):  {contador_verdes}")
+    print(f" Total general de eventos:         {contador_rojos + contador_verdes}")
+    print(f" Archivo guardado en: {ruta_completa}")
+    print("========================================")
+
+    dibujar_texto(pantalla, f"Prueba Finalizada.\nRojos: {contador_rojos} | Verdes: {contador_verdes}", tamano=30)
+    time.sleep(4)
     pygame.quit()
     sys.exit()
 

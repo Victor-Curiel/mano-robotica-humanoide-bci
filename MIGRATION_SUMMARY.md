@@ -1,3 +1,5 @@
+> **SUPERADO:** plan inicial de migración; el estado real está en README.md y docs/RESUMEN_MIGRACION_PYTHON.txt.
+
 # Resumen Ejecutivo: Migración MATLAB → Python
 
 **Estado:** Plan listo para implementación  

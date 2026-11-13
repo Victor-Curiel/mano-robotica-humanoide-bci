@@ -1,227 +1,201 @@
 # Control de Mano Robótica Humanoide mediante Interfaz Cerebro-Computador
 
-Sistema BCI offline que clasifica imagery motora (mano izquierda vs. derecha) a partir
-de señales EEG y controla una mano robótica de 2 grados de libertad.
+Sistema BCI offline que clasifica, con la mano dominante (derecha), tres estados a
+partir de EEG: **basal**, **apretar** (flexión de dedos) y **estirar** (pronación de
+la muñeca), y comanda una mano robótica de 2 grados de libertad.
 
-- **1 × MG995** → cierre/aperura simultánea de los dedos 1-5 (GPIO 23)
-- **1 × SG90** → pronación de la muñeca (GPIO 17)
+- **MG995** → cierre/apertura simultánea de los dedos 1-5 (GPIO 23)
+- **SG90** → pronación de la muñeca (GPIO 17)
 
-> Tesis terminal — UPIITA. Procesamiento offline, control en tiempo de ejecución.
+> Tesis terminal — UPIITA. Versión vigente: **Python** (MATLAB archivado en `_MATLAB_LEGACY/`).
 
 ---
 
-## Versi?n Python (v2.0) ? pipeline vigente
+## Estados y mapeo al hardware
 
-El pipeline MATLAB (`src/*.m`) queda como referencia hist?rica. La versi?n activa es Python.
+| Estado | Clase | (dedos, muñeca) | Estímulo | Acción |
+|---|:-:|:-:|---|---|
+| basal   | 0 | (0,0) | ninguno | reposo (muñeca 0°, dedos abiertos) |
+| apretar | 1 | (1,0) | círculo rojo + tono 1000 Hz | MG995 cierra el puño (PWM 120) |
+| estirar | 2 | (0,1) | cuadrado verde + tono 500 Hz | SG90 pronación (PWM 60) |
+
+El estado (1,1) no existe. Protocolo serial (115200 baud): `ded,conf,mun,conf,timestamp\n`,
+p. ej. `1,0.87,0,0.87,1.234`.
+
+---
+
+## Mapeo de canales (casco → registro de Curry)
+
+Las features se calculan en este orden. Aplica a **todos los registros nuevos**
+(carpetas `Ojos Abiertos` / `Ojos Cerrados`):
+
+| Posición en el casco | Nombre en Curry |
+|---|---|
+| C3 | **PZ** |
+| C4 | **P8** |
+| Cz | **P4** |
+
+El canal **ECG** del registro se usa como **EMG** para guiarse en el movimiento del
+sujeto; solo se visualiza, no entra al entrenamiento. Se define en `src/config.py`
+(`CHANNELS`, `EMG_CHANNEL`).
+
+---
+
+## Pipeline
+
+```
+EEG (.cdt)  +  CSV de estímulos (Registro De Pruebas/)
+   │
+   ├─► seleccionar_epocas   marcar eventos (visor con EEG + EMG)  → eventos.csv
+   ├─► cdt_to_set epochs    filtro FIR 8-12 Hz, ventanas de 1 s   → datos/epocas/<estado>/*.set
+   ├─► Características 9D   Welch (3) + Burg orden 16 (3) + Wavelet db4 D4 (3), banda 8-12 Hz
+   ├─► IQR + z-score        elimina artefactos y normaliza
+   ├─► MLP 9 → 10 (tanh) → 3 (softmax)
+   ├─► Predicción continua  ventana 1 s, paso 0.5 s
+   └─► Serial 115200 baud → ESP32 → MG995 + SG90
+```
+
+---
+
+## Instalación
+
+El entorno virtual va **fuera de OneDrive** (límite de ruta larga de Windows):
 
 ```powershell
-# Entorno (fuera de OneDrive por el l?mite de ruta larga de Windows)
 python -m venv C:\bcivenv
 C:\bcivenv\Scripts\python -m pip install -r requirements.txt
-
-# Entrenar 3 estados: basal / apretar / estirar (carpetas DATA_DIRS en src/config.py o BCI_DATA_BASAL / _APRETAR / _ESTIRAR)
-python -m src.train_model
-
-# Predecir sobre un .cdt/.set; --dry-run imprime, --port COM3 env?a al ESP32
-python -m src.predict_continuous archivo.cdt --dry-run
-
-# Validar contra CSV (t_start,t_end,clase)
-python -m src.validate labels.csv
-
-# Tests
-python -m pytest
 ```
 
-Par?metros clave (`src/config.py`): banda 8-12 Hz, ventana 1 s / paso 0.5 s, MLP 9?10?3 (basal (0,0), apretar (1,0) = cierra dedos, estirar (0,1) = gira mu?eca; (1,1) no existe),
-`fs` real del archivo (1024 Hz; MATLAB fijaba 500). Validaci?n leave-one-session-out
-(1 sujeto, 6 sesiones): MLP ? 0.73 ? 0.10 (azar 0.50). Con un solo sujeto no se mide
-generalizaci?n entre personas.
+No hace falta activarlo: se llama directamente a `C:\bcivenv\Scripts\python`.
+Requiere Python 3.10+ (probado con 3.12).
 
 ---
 
-## Arquitectura
+## Flujo de trabajo (paso a paso)
 
+Ejecutar desde la raíz del repositorio.
+
+**1. Correr el experimento** y anotar en Curry la hora exacta de inicio de la grabación:
+
+```powershell
+C:\bcivenv\Scripts\python src\Experimento.py          # estímulo 2 s, ISI 2-6 s
+C:\bcivenv\Scripts\python src\ExperimentoRapido.py    # estímulo 0.5 s, ISI 0.8-1.8 s
 ```
-EEG (.cdt / .set)
-   │
-   ├─► Conversión           CONVERTIR_CDT_A_SET.m
-   │
-   ├─► Extracción de características (9D)
-   │     ├─ Welch PSD      C3, C4, Cz   banda Beta 13-30 Hz
-   │     ├─ Burg PSD       C3, C4, Cz   AR order 16
-   │     └─ Wavelets D4    db4, nivel 4
-   │
-   ├─► Normalización        Z-Score  (mu_norm, sigma_norm)
-   │
-   ├─► Clasificación        MLP 9 → 10 → 2   (patternnet)
-   │     clase 1 = Mano Derecha    -> cierra el puño
-   │     clase 0 = Mano Izquierda  -> pronación de la muñeca
-   │
-   ├─► Predicción continua  ventana 2 s · traslape 50 % · decisión cada 1 s
-   │
-   └─► Serial COM3 @ 115200 baud
-         │
-         └─► ESP32 ─► MG995 (dedos) + SG90 (muñeca)
+El CSV con los timestamps de cada estímulo queda en `Registro De Pruebas/`.
+
+**2. Seleccionar épocas** en el visor (acepta un `.cdt`/`.set` o una carpeta con uno solo):
+
+```powershell
+C:\bcivenv\Scripts\python -m src.seleccionar_epocas "ruta\Acquisition 01.cdt" `
+  --stimuli "Registro De Pruebas\<csv>" --start HH:MM:SS.fff --basal-auto
 ```
+Teclas: arrastrar = marcar segmento · `b`/`a`/`e` = basal/apretar/estirar · `x` = descartar
+el evento más cercano · `u` = deshacer · `[` `]` = desplazar estímulos ±0.25 s ·
+`m` = EMG (ambas/señal/envolvente) · flechas = navegar · `s` = guardar `eventos.csv`.
+Opciones: `--emg-canal ECG`, `--out`.
+
+**3. Cortar épocas** a partir del `eventos.csv`:
+
+```powershell
+C:\bcivenv\Scripts\python -m src.cdt_to_set epochs "ruta\Acquisition 01.cdt" `
+  --events "ruta\eventos.csv"
+```
+La sesión se deduce de la carpeta (`arturoOjosAbiertos091126-1` → `arturo091126-1`); también
+se puede dar con `--session`. `cdt_to_set convert` genera un `.set` continuo con anotaciones.
+
+**4. Entrenar y validar:**
+
+```powershell
+C:\bcivenv\Scripts\python -m src.train_model                 # deja una sesión fuera
+C:\bcivenv\Scripts\python -m src.train_model --por-sujeto    # deja un sujeto fuera
+```
+Guarda `modelos/bci_model.pth` y `modelos/normalization_stats.json`.
+
+**5. Predecir / enviar al ESP32:**
+
+```powershell
+C:\bcivenv\Scripts\python -m src.predict_continuous archivo.cdt --dry-run
+C:\bcivenv\Scripts\python -m src.predict_continuous archivo.cdt --port COM3
+```
+
+**6. Validar contra etiquetas** (CSV `t_start,t_end,clase`):
+
+```powershell
+C:\bcivenv\Scripts\python -m src.validate labels.csv
+```
+
+**7. Pruebas:** `C:\bcivenv\Scripts\python -m pytest`
 
 ---
 
-## Mapeo de movimientos
+## Herramientas (qué hace cada una y qué sustituye)
 
-Cada clase comanda **un solo servo**; el otro vuelve a su posición inicial.
+| Programa | Función | Sustituye (MATLAB) |
+|---|---|---|
+| `src/Experimento.py`, `ExperimentoRapido.py` | Presentan estímulos (figura + tono) y registran timestamps | — (nuevo) |
+| `src/seleccionar_epocas.py` | Visor EEG + EMG para marcar eventos | selección manual en EEGLAB |
+| `src/cdt_to_set.py` | `.cdt` → `.set` y corte de épocas por evento | `CONVERTIR_CDT_A_SET.m` |
+| `src/train_model.py` | Características, IQR, z-score, validación y entrenamiento | `MODULO_BATCH_...PLOT.m` |
+| `src/predict_continuous.py` | Predicción con ventana deslizante y envío serial | `control_final.m`, `PREDICTOR_*.m`, `ENVIAR_A_ESP32.m`, `DEMO_FLEXIBLE.m`, `TEST_ESP32_SIMULADO.m` |
+| `src/validate.py` | Matriz de confusión y recall por clase | `VALIDADOR_CON_LABELS.m` |
+| `src/config.py` | Parámetros y rutas centralizados | variables al inicio de cada `.m` |
+| `src/feature_extraction.py` | Welch, Burg, wavelet, bandpower | `pwelch`, `pburg`, `wavedec`, `bandpower` |
+| `src/preprocessing.py` | Carga, filtrado, dataset, sesiones | `pop_loadset`, `pop_eegfilt` |
+| `src/model.py`, `predictor.py` | MLP y predicción | `patternnet`, `train` |
+| `src/utils.py`, `validation.py`, `hardware.py` | IQR/z-score, métricas, serial | `isoutlier`, `zscore`, `confusionmat`, `serialport` |
 
-| Clase | Significado | MG995 — dedos | SG90 — muñeca |
-|:-----:|-------------|---------------|---------------|
-| `1`   | **Mano Derecha** (imaginar cerrar la mano) | PWM 120 — **cierra el puño** | PWM 90 — posición inicial |
-| `0`   | **Mano Izquierda** (imaginar rotar la muñeca) | PWM 30 — posición inicial (resorte) | PWM 60 — **pronación** |
-
-La asignación de etiquetas no es una convención de este repo: el script de
-entrenamiento define `Y=1` para la carpeta `lado derecho` y `Y=0` para
-`lado izquierdo` (`src/MODULO_BATCH_EXTRACCION_WELCH_Y_BURG_50TRASLAPE_PLOT.m`,
-línea 154). Por eso **clase 1 siempre significa mano derecha**.
+Detalle ampliado en `docs/RESUMEN_MIGRACION_PYTHON.txt`.
 
 ---
 
 ## Estructura del repositorio
 
 ```
-bci-mano-robotica/
-├── src/                    Pipeline MATLAB
-│   ├── control_final.m               Script maestro (punto de entrada)
-│   ├── CONVERTIR_CDT_A_SET.m         Neuroscan .cdt → EEGLAB .set
-│   ├── MODULO_BATCH_...PLOT.m        Entrenamiento del modelo
-│   ├── PREDICTOR_DATOS_CRUDOS.m     Predicción DEDOS
-│   ├── PREDICTOR_MUNECA.m            Predicción MUÑECA
-│   ├── VALIDADOR_CON_LABELS.m        Validación vs. ground truth
-│   ├── ENVIAR_A_ESP32.m              Integración serial
-│   ├── TEST_ESP32_SIMULADO.m         Test sin hardware
-│   └── DEMO_FLEXIBLE.m               Demo con rutas configurables
-├── arduino/
-│   └── esp32_bci_hand_v2.cpp         Firmware ESP32
-├── modelos/
-│   └── Modelo_BCI_Completo_Wav.mat   Red entrenada + normalización
-├── docs/
-│   ├── CONTROL_DE_VERSION.md           Git, ramas, datos sensibles
-│   ├── GUIA_RAPIDA_V2.txt            Inicio rápido
-│   ├── CARGAR_EN_ARDUINO_V2.txt      Carga del firmware
-│   ├── RESUMEN_SISTEMA_V2.txt        Documentación técnica
-│   └── INICIO_RAPIDO.txt             Referencia de ejecución
-├── resultados/              Salidas de ejecución (ignoradas por git)
-└── .gitignore
+src/              Código Python (módulos y programas)
+arduino/          Firmware ESP32 (esp32_bci_hand_v2.cpp, 3 estados)
+modelos/          Modelo entrenado (.pth + JSON), LEGACY_* y .mat de MATLAB
+datos/            Datos de sujetos (ignorados por git): cdt/, epocas/, ojos_abiertos/, ojos_cerrados/
+Registro De Pruebas/  CSV de timestamps de estímulos (ignorados por git)
+docs/             Documentación (los .txt de V2 describen la versión MATLAB, legado)
+tests/            Pruebas automáticas (pytest)
+resultados/       Salidas de ejecución (ignoradas)
+_MATLAB_LEGACY/   Scripts .m originales
 ```
-
----
-
-## Control de versiones
-
-Repositorio **privado** en `github.com/Victor-Curiel/mano-robotica-humanoide-bci`,
-rama `main`.
-
-```powershell
-git status              # ver qué cambió
-git add .
-git commit -m "mensaje"
-git push
-```
-
-Se versiona **código, modelos y documentación**. Las señales EEG de los sujetos
-de prueba quedan fuera del repositorio por confidencialidad: el repo guarda
-*cómo* se procesa la señal, nunca la señal. El modelo entrenado
-(`modelos/Modelo_BCI_Completo_Wav.mat`) sí se versiona, porque sin él el
-pipeline no es reproducible.
-
-Guía completa —deshacer cambios, ramas, tags por hito de tesis, resolución de
-problemas de PATH— en [`docs/CONTROL_DE_VERSION.md`](docs/CONTROL_DE_VERSION.md).
-
----
-
-## Requisitos
-
-| Componente | Versión |
-|------------|---------|
-| MATLAB      | 2026a    |
-| EEGLAB      | versión verificada en MATLAB 2026a |
-| Signal Processing Toolbox | requerido (`pwelch`, `pburg`, `bandpower`) |
-| Wavelet Toolbox | requerido (`wavedec`, `detcoef`) |
-| Deep Learning Toolbox | requerido (`patternnet`, `train`) |
-| Arduino IDE | 2.x con soporte ESP32 |
-| ESP32       | ESP32-WROOM-32 |
-
----
-
-## Uso
-
-### 1. Cargar el firmware (una sola vez)
-
-```bash
-# Arduino IDE → Preferences → Additional boards manager URLs:
-#   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-#
-# Tools → Board      → ESP32-WROOM-32
-# Tools → Port       → COM3
-# Copiar arduino/esp32_bci_hand_v2.cpp en un sketch nuevo
-# Sketch → Upload
-```
-
-Verificar en Serial Monitor (115200 baud):
-```
-Sistema listo. Esperando datos de MATLAB...
-```
-
-### 2. Ejecutar el pipeline
-
-```matlab
->> control_final('C:\ruta\a\archivo.cdt')
-```
-
-El script maestro ejecuta el pipeline completo y activa los servos.
-Detalle en `docs/GUIA_RAPIDA_V2.txt`.
-
-### 3. Entrenar / reentrenar el modelo
-
-```matlab
->> MODULO_BATCH_EXTRACCION_WELCH_Y_BURG_50TRASLAPE_PLOT
-```
-
-Lee las carpetas `carpeta_der` y `carpeta_izq` (definidas en las líneas 8-9 del script),
-extrae características de cada `.set`, limpia artefactos con IQR y guarda
-`modelos/Modelo_BCI_Completo_Wav.mat`.
 
 ---
 
 ## Hardware
 
 | Actuador | Pin | Señal | Rango PWM |
-|----------|-----|-------|-----------|
+|---|---|---|---|
 | MG995 (dedos 1-5) | GPIO 23 | Rojo→VIN · Negro→GND · Amarillo→GPIO | 30 – 120 |
-| SG90 (muñeca)     | GPIO 17 | Rojo→VIN · Negro→GND · Amarillo→GPIO | 60 – 90 |
+| SG90 (muñeca) | GPIO 17 | Rojo→VIN · Negro→GND · Amarillo→GPIO | 60 – 90 |
 
-PWM a 50 Hz, resolución 10 bits, canal único para sincronía.
-Alimentación: 5 V @ 2.5 A mínimo.
-
----
-
-## Protocolo serial
-
-```
-"clase_ded,conf_ded,clase_mun,conf_mun,timestamp\n"
-"1,0.87,1,0.65,1.234\n"
-```
+PWM a 50 Hz, 10 bits, un canal LEDC por servo. Alimentación: 5 V @ 2.5 A mínimo.
+Cargar el firmware con Arduino IDE (ESP32-WROOM-32, 115200 baud) y verificar en el
+Serial Monitor: `Sistema listo. Esperando datos de MATLAB...` (el texto del firmware
+conserva esa frase por herencia).
 
 ---
 
 ## Estado del proyecto
 
-- [x] Pipeline offline funcional (extracción → normalización → clasificación → predicción)
-- [x] Integración ESP32 + 2 servos
-- [ ] Validación con señales de otros sujetos de prueba
-- [ ] Robustecer la red con nuevos *sets* de entrenamiento
-- [ ] Validación acoplada completa con labels manuales
+- [x] Migración MATLAB → Python (pipeline, visor, conversión, tests)
+- [x] Firmware con 3 estados (sin compilar/probar en hardware)
+- [ ] Marcar eventos y entrenar el modelo de 3 estados con los registros nuevos
+- [ ] Validación entre sujetos (Arturo, Arza, Marco)
+- [ ] Comparación ojos abiertos vs. cerrados (carpeta `Ojos Cerrados` aún vacía)
+- [ ] Prueba con el ESP32 conectado
 
 ---
 
+## Control de versiones
+
+Repositorio **privado**: `github.com/Victor-Curiel/mano-robotica-humanoide-bci`. Rama de
+trabajo `feature/python-migration`. Se versiona código, modelos y documentación; las
+señales EEG y los CSV de estímulos quedan fuera por confidencialidad. Guía en
+[`docs/CONTROL_DE_VERSION.md`](docs/CONTROL_DE_VERSION.md).
+
 ## Consideraciones éticas
 
-Este repositorio es **privado**. Las señales EEG corresponden a sujetos de prueba y
-no se versionan. Mantener los datos fuera del control de versiones; versionar
-únicamente código, modelos y documentación.
+Los datos corresponden a sujetos de prueba y no se versionan.

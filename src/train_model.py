@@ -18,7 +18,7 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 from src import config as cfg
 from src.model import predict_proba, train_model
-from src.preprocessing import build_dataset
+from src.preprocessing import build_dataset, subject_of_session
 from src.utils import apply_zscore, fit_zscore, iqr_outlier_mask, save_stats
 
 
@@ -43,12 +43,15 @@ def main() -> None:
     for i, n in enumerate(cfg.CLASS_NAMES):
         ap.add_argument(f"--{n}", type=Path, default=cfg.DATA_DIRS[i])
     ap.add_argument("--no-cv", action="store_true")
+    ap.add_argument("--por-sujeto", action="store_true", help="validar dejando un sujeto fuera (en vez de una sesion)")
     args = ap.parse_args()
 
     X, y, groups = build_dataset({i: getattr(args, n) for i, n in enumerate(cfg.CLASS_NAMES)})
     mask = iqr_outlier_mask(X)
     print(f"\nEpocas: {len(y)} | outliers IQR eliminados: {mask.sum()}")
     X, y, groups = X[~mask], y[~mask], groups[~mask]
+    if args.por_sujeto:
+        groups = np.array([subject_of_session(g) for g in groups])
     print(f"Utiles: {len(y)}  ({', '.join(f'{n}={int((y == i).sum())}' for i, n in enumerate(cfg.CLASS_NAMES))})")
 
     if not args.no_cv:

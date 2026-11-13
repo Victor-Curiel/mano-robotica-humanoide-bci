@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as cfg
+from .preprocessing import session_from_folder
 
 
 def read_cdt(path: Path) -> mne.io.BaseRaw:
@@ -98,7 +99,7 @@ def main() -> None:
     e = sub.add_parser("epochs")
     e.add_argument("cdt", type=Path)
     e.add_argument("--events", type=Path, required=True)
-    e.add_argument("--session", help="p.ej. marco110326-1 (default: carpeta del .cdt)")
+    e.add_argument("--session", help="p.ej. arturo091126-1 (default: derivada de la carpeta del .cdt)")
     e.add_argument("--out", type=Path, default=cfg.EPOCHS_DIR)
     e.add_argument("--win", type=float, default=cfg.WINDOW_SECS)
     e.add_argument("--step", type=float, default=cfg.WINDOW_SECS)
@@ -107,7 +108,7 @@ def main() -> None:
         print("Guardado:", convert(a.cdt, a.events, a.out))
     else:
         print("Epocas por clase:", extract_epochs(
-            a.cdt, a.events, a.session or a.cdt.parent.name, a.out, a.win, a.step))
+            a.cdt, a.events, a.session or session_from_folder(a.cdt), a.out, a.win, a.step))
 
 
 if __name__ == "__main__":

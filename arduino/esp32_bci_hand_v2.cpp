@@ -11,31 +11,14 @@
  *   - Conexión: USB Serie COM3 @ 115200 baud
  *
  * PROTOCOLO DE ENTRADA:
- *   Formato: "clase,conf_ded,clase_mun,conf_mun,timestamp\n"
- *   Ejemplo: "1,0.87,1,0.65,1.234\n"
+ *   Formato: "ded,conf_ded,mun,conf_mun,timestamp\n"   Ejemplo: "1,0.87,0,0.87,1.234\n"
+ *   (conf y timestamp son informativos)
  *
- *   Campos:
- *   - clase:      0 = Mano IZQUIERDA, 1 = Mano DERECHA
- *   - conf_ded:   confianza 0-1 (informativa, no limita el actuado)
- *   - clase_mun:  campo heredado del protocolo v1; se conserva por
- *                 compatibilidad pero la v2.0 decide con 'clase'
- *   - conf_mun:   confianza 0-1 (informativa)
- *   - timestamp:  tiempo en segundos (ignorado)
- *
- * MAPEO (ded,mun) -> SERVO. Estados nuevos: (0,0) basal, (1,0) apretar -> cierra dedos,
- *   (0,1) estirar -> gira muneca. (1,1) no existe. (Texto siguiente = esquema anterior izq/der)
- *
- *   clase 1 = MANO DERECHA
- *     MG995 (GPIO 23): PWM 120 -> CIERRA el puño, todos los dedos a la vez
- *     SG90  (GPIO 17): PWM 90  -> muñeca a posición inicial
- *
- *   clase 0 = MANO IZQUIERDA
- *     MG995 (GPIO 23): PWM 30  -> dedos a posición inicial (los retrae el resorte)
- *     SG90  (GPIO 17): PWM 60  -> PRONACIÓN de la muñeca
- *
- *   Nota sobre las etiquetas: el script de entrenamiento MODULO_BATCH asigna
- *   Y=1 a la carpeta "lado derecho" y Y=0 a "lado izquierdo", de modo que
- *   clase 1 SIEMPRE significa mano derecha. Ver MODULO_BATCH...m, linea 154.
+ * ESTADOS (ded,mun):
+ *   (0,0) BASAL   : MG995 PWM 30 (abiertos), SG90 PWM 90 (inicial)
+ *   (1,0) APRETAR : MG995 PWM 120 (cierra el puno), SG90 PWM 90
+ *   (0,1) ESTIRAR : MG995 PWM 30, SG90 PWM 60 (pronacion)
+ *   (1,1) no existe; se trata como basal.
  *
  * PARÁMETROS PWM:
  *   - Frecuencia: 50 Hz (estándar para servos)

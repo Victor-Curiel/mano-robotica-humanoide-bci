@@ -1,0 +1,11 @@
+//CORRE AMBIENTE VIRTUAL DE PYTHON
+C:\bcivenv\Scripts\python 
+
+//CORRE EXPERIMENTO RAPIDO
+C:\bcivenv\Scripts\python src\ExperimentoRapido.py
+
+//CORRE EXPERIMENTO 
+C:\bcivenv\Scripts\python src\Experimento.py
+
+//CORRE SOFTWARE BCI
+C:\bcivenv\Scripts\python -m src.seleccionar_epocas "ruta\archivo.cdt" `

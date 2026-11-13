@@ -20,8 +20,12 @@ mano izquierda vs derecha. Con la mano dominante (derecha) se clasifican
   estirar    (0,1)           cuadrado verde + tono 500 Hz     gira muneca (SG90)
   El estado (1,1) no existe.
 Protocolo serial (115200 baud): "ded,conf,mun,conf,timestamp\n".
-El firmware (arduino/esp32_bci_hand_v2.cpp) se actualizo a esta logica y
-debe recargarse en el ESP32.
+El firmware (arduino/esp32_bci_hand_v2.cpp) CAMBIO: se actualizo a esta logica
+y debe recargarse en el ESP32 (no compilado ni probado en hardware).
+
+MAPEO DE CANALES (todos los registros nuevos; los .set antiguos de Marco
+izq/der se descartaron): casco C3 = PZ, C4 = P8, Cz = P4 en Curry (sitios
+parietales). El canal ECG se usa como EMG solo para visualizacion.
 
 =====================================================================
 2. ESTRUCTURA DEL REPOSITORIO
@@ -94,6 +98,18 @@ src/hardware.py                    [sustituye: serialport/fprintf de
 
 --- Programas ejecutables (python -m src.<nombre>) ---
 
+src/Experimento.py / ExperimentoRapido.py   [nuevo; no existia en MATLAB]
+  Presentan estimulos (circulo rojo + 1000 Hz = apretar; cuadrado verde +
+  500 Hz = estirar) y guardan en Registro De Pruebas/ un CSV con hora,
+  tiempo, estimulo, duracion e ISI. Normal: 2 s / ISI 2-6 s. Rapido: 0.5 s /
+  ISI 0.8-1.8 s. Se ejecutan con: python src\Experimento.py
+
+src/seleccionar_epocas.py          [sustituye: marcado manual en EEGLAB]
+  Visor con C3,C4,Cz (PZ,P8,P4) filtrados 8-12 Hz y un cuarto eje EMG (canal
+  ECG, 20-400 Hz, con envolvente; tecla m alterna). Superpone estimulos del
+  CSV (--stimuli, --start), propone basal (--basal-auto) y permite marcar,
+  descartar y desplazar eventos. Guarda eventos.csv. Acepta archivo o carpeta.
+
 src/cdt_to_set.py                  [sustituye: CONVERTIR_CDT_A_SET.m]
   Convierte .cdt a .set y permite MARCAR EVENTOS mediante un CSV
   (onset_s, duration_s, label). Dos comandos:
@@ -135,8 +151,8 @@ Correspondencia de funciones:
 =====================================================================
 4. FLUJO DE TRABAJO CON SUJETOS NUEVOS
 =====================================================================
-1) Copiar el .cdt a datos/cdt/<sujeto>/ y crear eventos.csv junto a el
-   (plantilla: datos/cdt/_ejemplo_sujeto/eventos_ejemplo.csv). Los tiempos
+1) Correr el experimento y abrir el .cdt en el visor (seleccionar_epocas)
+   para generar eventos.csv (plantilla: datos/cdt/_ejemplo_sujeto/). Los tiempos
    se obtienen de la guia del experimento / video (no hay marcas en el
    canal Trigger de los .cdt actuales).
 2) python -m src.cdt_to_set epochs datos/cdt/<sujeto>/archivo.cdt
@@ -173,12 +189,15 @@ d) Unidades: MNE trabaja en Volts y EEGLAB en microvolts; se convierte.
   se filtran en 8-12 Hz de forma explicita.
 - Las pruebas ojos abiertos/cerrados aun no tienen analisis programado
   (ver seccion 7).
+- Con 3 sujetos se puede validar dejando un sujeto fuera:
+  python -m src.train_model --por-sujeto
 
 =====================================================================
 7. PRUEBAS DE OJOS ABIERTOS / CERRADOS (conclusion de la tesis)
 =====================================================================
 Se usan para sustentar que el control no depende de funciones del aparato
-visual. Las carpetas datos/ojos_abiertos y datos/ojos_cerrados estan listas
+visual. Hay 11 registros de ojos abiertos (Arturo 3, Arza 3, Marco 5); ojos cerrados
+aun esta vacia. Las carpetas datos/ojos_abiertos y datos/ojos_cerrados estan listas
 para recibir esos registros. Una comparacion natural, aun por programar, es
 repetir la clasificacion en ambas condiciones y comparar exactitud.
 

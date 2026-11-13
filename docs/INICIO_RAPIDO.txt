@@ -1,3 +1,5 @@
+> **LEGADO (MATLAB, 2 clases izquierda/derecha).** Vigente: Python, ver README.md y docs/RESUMEN_MIGRACION_PYTHON.txt.
+
 ════════════════════════════════════════════════════════════════════════════════
              SISTEMA BCI v2.0 - REFERENCIA RÁPIDA DE EJECUCIÓN
         (1× MG995 DEDOS + 1× SG90 MUÑECA - Sistema Integrado)

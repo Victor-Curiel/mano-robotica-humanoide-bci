@@ -125,3 +125,21 @@ def test_parse_stimuli_and_basal(tmp_path):
     a = parse_stimuli(p, "10:00:10")
     assert a.values.tolist() == [[10.0, 1.0, "apretar"], [15.5, 2.0, "estirar"]]
     assert basal_between(a).values.tolist() == [[11.5, 3.5, "basal"]]
+
+
+def test_channel_mapping_and_folder_helpers(tmp_path):
+    from src.preprocessing import (emg_envelope, resolve_recording, session_from_folder,
+                                   subject_of_session)
+    assert cfg.CHANNELS == ("PZ", "P8", "P4")
+    d = tmp_path / "Arturo" / "arturoOjosAbiertos091126-1"
+    d.mkdir(parents=True)
+    assert session_from_folder(d / "Acquisition 01.cdt") == "arturo091126-1"
+    assert subject_of_session("arturo091126-1") == "arturo"
+    with pytest.raises(FileNotFoundError):
+        resolve_recording(d)
+    (d / "Acquisition 01.cdt").write_bytes(b"x")
+    assert resolve_recording(d).name == "Acquisition 01.cdt"
+    with pytest.raises(ValueError):
+        resolve_recording(tmp_path / "x.txt") if (tmp_path / "x.txt").write_text("a") else None
+    env = emg_envelope(np.r_[np.zeros(500), np.ones(500) * 5, np.zeros(500)], 1000)
+    assert env[750] > 4 and env[100] < 0.1

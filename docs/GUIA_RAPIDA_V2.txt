@@ -1,3 +1,5 @@
+> **LEGADO (MATLAB, 2 clases izquierda/derecha).** Vigente: Python, ver README.md y docs/RESUMEN_MIGRACION_PYTHON.txt.
+
 ════════════════════════════════════════════════════════════════════════════════
                     GUÍA RÁPIDA - SISTEMA BCI v2.0
                 Máximo 5 minutos de lectura para empezar
