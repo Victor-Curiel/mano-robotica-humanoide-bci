@@ -89,9 +89,12 @@ El CSV con los timestamps de cada estímulo queda en `Registro De Pruebas/`.
 C:\bcivenv\Scripts\python -m src.seleccionar_epocas "ruta\Acquisition 01.cdt" `
   --stimuli "Registro De Pruebas\<csv>" --start HH:MM:SS.fff --basal-auto
 ```
-Teclas: arrastrar = marcar segmento · `b`/`a`/`e` = basal/apretar/estirar · `x` = descartar
-el evento más cercano · `u` = deshacer · `[` `]` = desplazar estímulos ±0.25 s ·
-`m` = EMG (ambas/señal/envolvente) · flechas = navegar · `s` = guardar `eventos.csv`.
+Muestra la grabaci?n completa al abrir; slider de tiempo (ancho de ventana fijo), minimapa
+(clic = ir ah?), zoom con `+`/`-` o rueda del rat?n. Teclas: arrastrar = marcar segmento ?
+`b`/`a`/`e` = basal/apretar/estirar ? `x` = descartar el evento m?s cercano ? `u` = deshacer ?
+`[` `]` = desplazar est?mulos ?0.25 s ? `m` = EMG (ambas/se?al/envolvente) ?
+`f` = filtro EMG 8-12 Hz (defecto) / 20-400 Hz ? arriba/abajo = escala ?V (`0` autoescala) ?
+flechas izq/der = media ventana ? `s` = guardar `eventos.csv`.
 Opciones: `--emg-canal ECG`, `--out`.
 
 **3. Cortar épocas** a partir del `eventos.csv`:

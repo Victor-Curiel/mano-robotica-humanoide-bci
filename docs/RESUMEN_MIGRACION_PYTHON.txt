@@ -105,8 +105,10 @@ src/Experimento.py / ExperimentoRapido.py   [nuevo; no existia en MATLAB]
   ISI 0.8-1.8 s. Se ejecutan con: python src\Experimento.py
 
 src/seleccionar_epocas.py          [sustituye: marcado manual en EEGLAB]
-  Visor con C3,C4,Cz (PZ,P8,P4) filtrados 8-12 Hz y un cuarto eje EMG (canal
-  ECG, 20-400 Hz, con envolvente; tecla m alterna). Superpone estimulos del
+  Visor estilo EEGLAB con C3,C4,Cz (PZ,P8,P4) filtrados 8-12 Hz y un cuarto eje
+  EMG (canal ECG; 8-12 Hz por defecto, tecla f alterna a 20-400 Hz; tecla m
+  alterna senal/envolvente). Muestra la grabacion completa, slider de tiempo,
+  minimapa y zoom (+/-, rueda). Superpone estimulos del
   CSV (--stimuli, --start), propone basal (--basal-auto) y permite marcar,
   descartar y desplazar eventos. Guarda eventos.csv. Acepta archivo o carpeta.
 

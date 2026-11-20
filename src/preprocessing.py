@@ -53,7 +53,7 @@ def load_continuous(path: str | Path, band=cfg.BAND, filter_signal: bool = True)
 
 
 def load_for_view(path: str | Path, emg_channel: str | None = cfg.EMG_CHANNEL):
-    """Para el visor: (eeg [3,n] filtrado en cfg.BAND, emg [n] filtrado en cfg.EMG_BAND o None, fs). En uV."""
+    """Para el visor: (eeg [3,n] filtrado en cfg.BAND, emg dict {"mu": 8-12 Hz, "broad": 20-400 Hz} o None, fs). En uV."""
     path = Path(path)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -71,7 +71,9 @@ def load_for_view(path: str | Path, emg_channel: str | None = cfg.EMG_CHANNEL):
         idx = [c.upper() for c in raw.ch_names].index(emg_channel.upper())
         x = raw.get_data(picks=[idx])[0] * UV
         hi = min(cfg.EMG_BAND[1], fs / 2 - 1)
-        emg = sosfiltfilt(butter(4, [cfg.EMG_BAND[0], hi], btype="band", fs=fs, output="sos"), x)
+        sos = lambda lo, h: butter(4, [lo, h], btype="band", fs=fs, output="sos")
+        emg = {"mu": sosfiltfilt(sos(cfg.BAND[0], cfg.BAND[1]), x),
+               "broad": sosfiltfilt(sos(cfg.EMG_BAND[0], hi), x)}
     return eeg.get_data() * UV, emg, fs
 
 

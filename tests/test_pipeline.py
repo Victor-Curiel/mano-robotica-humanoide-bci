@@ -143,3 +143,17 @@ def test_channel_mapping_and_folder_helpers(tmp_path):
         resolve_recording(tmp_path / "x.txt") if (tmp_path / "x.txt").write_text("a") else None
     env = emg_envelope(np.r_[np.zeros(500), np.ones(500) * 5, np.zeros(500)], 1000)
     assert env[750] > 4 and env[100] < 0.1
+
+
+def test_viewer_helpers():
+    from src.seleccionar_epocas import clamp_window, minmax_decimate, zoom_window
+    t = np.arange(100000) / 1000.0
+    y = np.zeros(100000)
+    y[54321] = 9.0
+    td, yd = minmax_decimate(t, y, 1000)
+    assert len(yd) <= 1000 and yd.max() == 9.0
+    assert clamp_window(-5, 10, 100) == (0.0, 10.0)
+    assert clamp_window(95, 10, 100) == (90.0, 10.0)
+    t0, w = zoom_window(0, 100, 100, 0.5, center=50)
+    assert w == 50 and 0 <= t0 <= 50
+    assert zoom_window(0, 100, 100, 2.0)[1] == 100
